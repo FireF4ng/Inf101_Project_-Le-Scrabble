@@ -115,11 +115,12 @@ def init_jetons():
     board = [['' for _ in range(TAILLE_PLATEAU)] for _ in range(TAILLE_PLATEAU)]
     return board
 
-def affiche_jetons(j):
-    """Q3) Affiche le plateau des jetons j."""
+def affiche_jetons(table_jetons, table_bonus):
+    """Q3) Affiche le plateau des jetons j. Q4) Affiche le plateau des jetons avec les bonus visibles."""
+
+    bonus_symboles = {'MT': '*', 'MD': '+', 'LT': '-', 'LD': '/'}
 
     marge_tete = " " * TAILLE_MARGE
-
 
     print(marge_tete, end="")
     for col in range(TAILLE_PLATEAU):
@@ -142,15 +143,46 @@ def affiche_jetons(j):
         
 
         for col in range(TAILLE_PLATEAU):
-            jeton = j[lig][col]
-            if jeton == "":
-                jeton = " "
-            
-            print(f' {jeton} |', end="")
+            jeton = table_jetons[lig][col]
+            bonus_val = table_bonus[lig][col]
+            symbole = bonus_symboles.get(bonus_val, '')
+
+            contenu_cellule = "  "
+
+            if jeton != "":
+                contenu_cellule = jeton
+                if symbole != "":
+                    contenu_cellule += symbole
+                else:
+                    contenu_cellule += " "
+            else:
+                if symbole != "":
+                    contenu_cellule = " " + symbole
              
+            print(f'{contenu_cellule} |', end="")
         print()
-        print(marge_tete, end="")
-        print("|" + ("---|" * TAILLE_PLATEAU))
+        print(marge_tete + "|" + ("---|" * TAILLE_PLATEAU))
+    print('-' * (TAILLE_MARGE + TAILLE_PLATEAU * 5 + 1))
 
 
-affiche_jetons(init_jetons())
+
+# Programe principal #######################################################
+
+# Q1) Initialiser les bonus
+bonus = init_bonus()
+
+# Q2) Initialiser les jetons
+jetons = init_jetons()
+
+# 1. Afficher le plateau vide (Q5) 
+affiche_jetons(jetons, bonus)
+
+# 2. Test Q4 : Plaçons un jeton 'A' sur un bonus 'MD'
+
+jetons[1][1] = 'A' # (1,1) est 'MD' -> '+'
+jetons[2][2] = 'B' # (2,2) est 'MD' -> '+'
+jetons[0][3] = 'C' # (0,3) est 'LD' -> '/'
+jetons[0][1] = 'D' # (0,1) est vide
+
+# Affiche le plateau avec les jetons ET les bonus
+affiche_jetons(jetons, bonus)
