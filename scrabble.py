@@ -171,8 +171,8 @@ def init_pioche_alea():
         lettre = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         liste_pioche.append(lettre)
     if JOKER not in liste_pioche:
-        liste_pioche[random.randint(0, 99)] = JOKER
-        liste_pioche[random.randint(0, 99)] = JOKER
+        liste_pioche[random.randint(0, 50)] = JOKER
+        liste_pioche[random.randint(50, 99)] = JOKER
     if "ABCDEFGHIJKLMNOPQRSTUVWXYZ" not in liste_pioche:
         for lettre in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
             if lettre not in liste_pioche:
@@ -189,6 +189,23 @@ def piocher(x, sac):
             jetons_pioches.append(jeton)
     return jetons_pioches
 
+
+def completer_main(main,sac):
+    """Q9) Complète la main du joueur à 7 jetons."""
+    while len(main) < 7 and sac:
+        jeton = sac.pop(random.randint(0, len(sac) - 1))
+        main.append(jeton)
+    return main
+
+
+def echanger(jetons, main, sac):
+    """Q10) Échange les jetons donnés entre la main et le sac."""
+    for jeton in jetons:
+        if jeton in main:
+            main.remove(jeton)
+            sac.append(jeton)
+    main = completer_main(main, sac)
+    return main, sac
 
 # Programe principal #######################################################
 
