@@ -12,6 +12,7 @@ Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
 # IMPORTS ######################################################################
 
 from pathlib import Path  # gestion fichiers
+import random  # pour la pioche aléatoire
 
 
 # CONSTANTES ###################################################################
@@ -107,13 +108,11 @@ def generer_dico() :
 
 # PARTIE MANUELLE ##################################################################
 
-bonus = init_bonus()
-# print(bonus) # Q1) Test init_bonus()
-
 def init_jetons():
     """Q2) Initialise le plateau des jetons vide."""
     board = [['' for _ in range(TAILLE_PLATEAU)] for _ in range(TAILLE_PLATEAU)]
     return board
+
 
 def affiche_jetons(table_jetons, table_bonus):
     """Q3) Affiche le plateau des jetons j. Q4) Affiche le plateau des jetons avec les bonus visibles."""
@@ -165,6 +164,31 @@ def affiche_jetons(table_jetons, table_bonus):
     print('-' * (TAILLE_MARGE + TAILLE_PLATEAU * 5 + 1))
 
 
+def init_pioche_alea():
+    """Q7) Initialise la pioche aléatoire des jetons."""
+    liste_pioche = []
+    for i in range(100):
+        lettre = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        liste_pioche.append(lettre)
+    if JOKER not in liste_pioche:
+        liste_pioche[random.randint(0, 99)] = JOKER
+        liste_pioche[random.randint(0, 99)] = JOKER
+    if "ABCDEFGHIJKLMNOPQRSTUVWXYZ" not in liste_pioche:
+        for lettre in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            if lettre not in liste_pioche:
+                liste_pioche[random.randint(0, 99)] = lettre
+    return liste_pioche
+
+
+def piocher(x, sac):
+    """Q8) Pioche x jetons du sac."""
+    jetons_pioches = []
+    for _ in range(x):
+        if sac:
+            jeton = sac.pop(random.randint(0, len(sac) - 1))
+            jetons_pioches.append(jeton)
+    return jetons_pioches
+
 
 # Programe principal #######################################################
 
@@ -180,9 +204,10 @@ affiche_jetons(jetons, bonus)
 # 2. Test Q4 : Plaçons un jeton 'A' sur un bonus 'MD'
 
 jetons[1][1] = 'A' # (1,1) est 'MD' -> '+'
-jetons[2][2] = 'B' # (2,2) est 'MD' -> '+'
+jetons[5][5] = 'B' # (5,5) est 'LT' -> '-'
 jetons[0][3] = 'C' # (0,3) est 'LD' -> '/'
-jetons[0][1] = 'D' # (0,1) est vide
+jetons[0][0] = 'C' # (0,0) est 'MT' -> '*'
+jetons[0][1] = 'E' # (0,1) est vide
 
 # Affiche le plateau avec les jetons ET les bonus
 affiche_jetons(jetons, bonus)
