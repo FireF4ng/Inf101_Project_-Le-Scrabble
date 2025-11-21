@@ -252,13 +252,20 @@ def mot_jouable(mot, ll):
     return True
 
 
-def mots_jouables(motsfr, ll):
+def mots_jouables(motsfr, extra_lett, ll):
     """Sélectionne les mots de motsfr pouvant être formés avec les lettres de la liste ll."""
-    liste_mots = []
-    for mot in motsfr:
-        if mot_jouable(mot, ll):
-            liste_mots.append(mot)
-    return liste_mots
+    liste_mots_jetons = []
+    main = list(ll)
+    liste_mots_longueur = select_mot_longueur(motsfr, len(ll) + len(extra_lett))
+    if not liste_mots_longueur:
+        liste_mots_longueur = select_mot_longueur(motsfr, len(ll))
+    if extra_lett:
+        for i in extra_lett:
+            main.append(i)
+    for mot in liste_mots_longueur:
+        if mot_jouable(mot, main):
+            liste_mots_jetons.append(mot)
+    return liste_mots_jetons
 
 
 # Q12) Générer le dictionnaire français
