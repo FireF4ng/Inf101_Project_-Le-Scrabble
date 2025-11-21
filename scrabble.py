@@ -68,46 +68,6 @@ def init_bonus() :
     return plt_bonus
 
 
-# PARTIE 3 : CONSTRUCTIONS DE MOTS #############################################
-
-def generer_dictfr(nf='littre.txt') :
-    """Liste des mots Français en majuscules sans accent.
-
-    >>> len(generer_dictfr())
-    73085
-    """
-    mots = []
-    with Path(nf).open(encoding='utf_8') as fich_mots :
-        for line in fich_mots : mots.append(line.strip().upper())
-    return mots
-
-
-# PARTIE 4 : VALEUR D'UN MOT ###################################################
-
-
-def generer_dico() :
-    """Dictionnaire des jetons.
-
-    >>> jetons = generer_dico()
-    >>> jetons['A'] == {'occ': 9, 'val': 1}
-    True
-    >>> jetons['B'] == jetons['C']
-    True
-    >>> jetons['?']['val'] == 0
-    True
-    >>> jetons['!']
-    Traceback (most recent call last):
-    KeyError: '!'
-    """
-    jetons = {}
-    with Path('lettres.txt').open(encoding='utf_8') as lettres :
-        for ligne in lettres :
-            l, v, o = ligne.strip().split(';')
-            jetons[l] = {'occ': int(o), 'val': int(v)}
-    return jetons
-
-# PARTIE MANUELLE ##################################################################
-
 def init_jetons():
     """Q2) Initialise le plateau des jetons vide."""
     board = [['' for _ in range(TAILLE_PLATEAU)] for _ in range(TAILLE_PLATEAU)]
@@ -164,6 +124,30 @@ def affiche_jetons(table_jetons, table_bonus):
     print('-' * (TAILLE_MARGE + TAILLE_PLATEAU * 5 + 1))
 
 
+# Q1) Initialiser les bonus
+bonus = init_bonus()
+
+# Q2) Initialiser les jetons
+jetons = init_jetons()
+
+# 1. Afficher le plateau vide (Q5) 
+affiche_jetons(jetons, bonus)
+
+# 2. Test Q4 : Plaçons un jeton 'A' sur un bonus 'MD'
+
+# jetons[1][1] = 'A' # (1,1) est 'MD' -> '+'
+# jetons[5][5] = 'B' # (5,5) est 'LT' -> '-'
+# jetons[0][3] = 'C' # (0,3) est 'LD' -> '/'
+# jetons[0][0] = 'C' # (0,0) est 'MT' -> '*'
+# jetons[0][1] = 'E' # (0,1) est vide
+
+# Affiche le plateau avec les jetons ET les bonus
+affiche_jetons(jetons, bonus)
+
+
+# PARTIE 2 : LA PIOCHE #########################################################
+
+
 def init_pioche_alea():
     """Q7) Initialise la pioche aléatoire des jetons."""
     liste_pioche = []
@@ -207,24 +191,114 @@ def echanger(jetons, main, sac):
     main = completer_main(main, sac)
     return main, sac
 
+
+# Q7) Initialiser la pioche aléatoire
+pioche = init_pioche_alea()
+print("Pioche initiale (100 jetons) :", len(pioche))
+
+# Q8) Piocher 7 jetons
+main_joueur1 = piocher(7, pioche)
+print("Main du joueur 1 (7 jetons) :", main_joueur1)
+main_joueur2 = piocher(7, pioche)
+print("Main du joueur 2 (7 jetons) :", main_joueur2)
+
+# Q11) Échanger des jetons entre la main du joueur 2 et le sac
+echanger(main_joueur2[:3], main_joueur2, pioche)
+print("Main du joueur 2 après échange de 3 jetons :", main_joueur2)
+print("Pioche après échange :", len(pioche), "jetons restants")
+
+
+# PARTIE 3 : CONSTRUCTIONS DE MOTS #############################################
+
+
+def generer_dictfr(nf='littre.txt') :
+    """Liste des mots Français en majuscules sans accent.
+
+    >>> len(generer_dictfr())
+    73085
+    """
+    mots = []
+    with Path(nf).open(encoding='utf_8') as fich_mots :
+        for line in fich_mots : mots.append(line.strip().upper())
+    return mots
+
+
+def select_mot_initiale(motsfr,let):
+    """Sélectionne les mots commençant par la lettre let."""
+    liste_mots = []
+    for i in motsfr:
+        if i[0] == let:
+            liste_mots.append(i)
+    return liste_mots
+
+
+def select_mot_longueur(motsfr,lgr):
+    """Sélectionne les mots de longueur lgr."""
+    liste_mots = []
+    for i in motsfr:
+        if len(i) == lgr:
+            liste_mots.append(i)
+    return liste_mots
+
+
+def mot_jouable(mot, ll):
+    """Vérifie si le mot peut être formé avec les lettres de la liste ll."""
+    liste_temp = list(ll)
+    for lettre in mot:
+        if lettre in liste_temp:
+            liste_temp.remove(lettre)
+        else:
+            return False
+    return True
+
+
+def mots_jouables(motsfr, ll):
+    """Sélectionne les mots de motsfr pouvant être formés avec les lettres de la liste ll."""
+    liste_mots = []
+    for mot in motsfr:
+        if mot_jouable(mot, ll):
+            liste_mots.append(mot)
+    return liste_mots
+
+
+# Q12) Générer le dictionnaire français
+mots_fr = generer_dictfr()
+print("Nombre de mots dans le dictionnaire français :", len(mots_fr))
+
+# Q13) Sélectionner les mots commençant par 'Y'
+mots_commencant_par_Y = select_mot_initiale(mots_fr, 'Y')
+print("Mots commençant par 'Y' :", len(mots_commencant_par_Y))
+
+# Q14) Sélectionner les mots de longueur 19
+mots_longueur_19 = select_mot_longueur(mots_fr, 19)
+print("Mots de longueur 19 :", len(mots_longueur_19))
+
+# PARTIE 4 : VALEUR D'UN MOT ###################################################
+
+
+def generer_dico() :
+    """Dictionnaire des jetons.
+
+    >>> jetons = generer_dico()
+    >>> jetons['A'] == {'occ': 9, 'val': 1}
+    True
+    >>> jetons['B'] == jetons['C']
+    True
+    >>> jetons['?']['val'] == 0
+    True
+    >>> jetons['!']
+    Traceback (most recent call last):
+    KeyError: '!'
+    """
+    jetons = {}
+    with Path('lettres.txt').open(encoding='utf_8') as lettres :
+        for ligne in lettres :
+            l, v, o = ligne.strip().split(';')
+            jetons[l] = {'occ': int(o), 'val': int(v)}
+    return jetons
+
+
 # Programe principal #######################################################
 
-# Q1) Initialiser les bonus
-bonus = init_bonus()
 
-# Q2) Initialiser les jetons
-jetons = init_jetons()
 
-# 1. Afficher le plateau vide (Q5) 
-affiche_jetons(jetons, bonus)
-
-# 2. Test Q4 : Plaçons un jeton 'A' sur un bonus 'MD'
-
-jetons[1][1] = 'A' # (1,1) est 'MD' -> '+'
-jetons[5][5] = 'B' # (5,5) est 'LT' -> '-'
-jetons[0][3] = 'C' # (0,3) est 'LD' -> '/'
-jetons[0][0] = 'C' # (0,0) est 'MT' -> '*'
-jetons[0][1] = 'E' # (0,1) est vide
-
-# Affiche le plateau avec les jetons ET les bonus
-affiche_jetons(jetons, bonus)
