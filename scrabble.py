@@ -28,6 +28,7 @@ JOKER = '?'  # jeton joker
 
 # PARTIE 1 : LE PLATEAU ########################################################
 
+
 def symetrise_liste(lst) :
     """
     Auxilliaire pour Q1 : symétrise en place la liste lst.
@@ -124,32 +125,11 @@ def affiche_jetons(table_jetons, table_bonus):
     print('-' * (TAILLE_MARGE + TAILLE_PLATEAU * 5 + 1))
 
 
-# Q1) Initialiser les bonus
-bonus = init_bonus()
-
-# Q2) Initialiser les jetons
-jetons = init_jetons()
-
-# 1. Afficher le plateau vide (Q5) 
-affiche_jetons(jetons, bonus)
-
-# 2. Test Q4 : Plaçons un jeton 'A' sur un bonus 'MD'
-
-# jetons[1][1] = 'A' # (1,1) est 'MD' -> '+'
-# jetons[5][5] = 'B' # (5,5) est 'LT' -> '-'
-# jetons[0][3] = 'C' # (0,3) est 'LD' -> '/'
-# jetons[0][0] = 'C' # (0,0) est 'MT' -> '*'
-# jetons[0][1] = 'E' # (0,1) est vide
-
-# Affiche le plateau avec les jetons ET les bonus
-affiche_jetons(jetons, bonus)
-
-
 # PARTIE 2 : LA PIOCHE #########################################################
 
 
 def init_pioche_alea():
-    """Q7) Initialise la pioche aléatoire des jetons."""
+    """Q7) Initialise la pioche aléatoire des jetons. Obsolete : voir Q20."""
     liste_pioche = []
     for i in range(100):
         lettre = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -192,22 +172,6 @@ def echanger(jetons, main, sac):
     return main, sac
 
 
-# Q7) Initialiser la pioche aléatoire
-pioche = init_pioche_alea()
-print("Pioche initiale (100 jetons) :", len(pioche))
-
-# Q8) Piocher 7 jetons
-main_joueur1 = piocher(7, pioche)
-print("Main du joueur 1 (7 jetons) :", main_joueur1)
-main_joueur2 = piocher(7, pioche)
-print("Main du joueur 2 (7 jetons) :", main_joueur2)
-
-# Q11) Échanger des jetons entre la main du joueur 2 et le sac
-echanger(main_joueur2[:3], main_joueur2, pioche)
-print("Main du joueur 2 après échange de 3 jetons :", main_joueur2)
-print("Pioche après échange :", len(pioche), "jetons restants")
-
-
 # PARTIE 3 : CONSTRUCTIONS DE MOTS #############################################
 
 
@@ -224,7 +188,7 @@ def generer_dictfr(nf='littre.txt') :
 
 
 def select_mot_initiale(motsfr,let):
-    """Sélectionne les mots commençant par la lettre let."""
+    """Q13) Sélectionne les mots commençant par la lettre let."""
     liste_mots = []
     for i in motsfr:
         if i[0] == let:
@@ -233,7 +197,7 @@ def select_mot_initiale(motsfr,let):
 
 
 def select_mot_longueur(motsfr,lgr):
-    """Sélectionne les mots de longueur lgr."""
+    """Q14) Sélectionne les mots de longueur lgr."""
     liste_mots = []
     for i in motsfr:
         if len(i) == lgr:
@@ -242,7 +206,7 @@ def select_mot_longueur(motsfr,lgr):
 
 
 def mot_jouable(mot, ll):
-    """Vérifie si le mot peut être formé avec les lettres de la liste ll."""
+    """Q15) Vérifie si le mot peut être formé avec les lettres de la liste ll."""
     liste_temp = list(ll)
     for lettre in mot:
         if lettre in liste_temp:
@@ -255,7 +219,7 @@ def mot_jouable(mot, ll):
 
 
 def mots_jouables(motsfr, extra_lett, ll):
-    """Sélectionne les mots de motsfr pouvant être formés avec les lettres de la liste ll."""
+    """Q16) Sélectionne les mots de motsfr pouvant être formés avec les lettres de la liste ll."""
     liste_mots_jetons = []
     main = list(ll)
     liste_mots_longueur = select_mot_longueur(motsfr, len(ll) + len(extra_lett))
@@ -268,19 +232,6 @@ def mots_jouables(motsfr, extra_lett, ll):
         if mot_jouable(mot, main):
             liste_mots_jetons.append(mot)
     return liste_mots_jetons
-
-
-# Q12) Générer le dictionnaire français
-mots_fr = generer_dictfr()
-print("Nombre de mots dans le dictionnaire français :", len(mots_fr))
-
-# Q13) Sélectionner les mots commençant par 'Y'
-mots_commencant_par_Y = select_mot_initiale(mots_fr, 'Y')
-print("Mots commençant par 'Y' :", len(mots_commencant_par_Y))
-
-# Q14) Sélectionner les mots de longueur 19
-mots_longueur_19 = select_mot_longueur(mots_fr, 19)
-print("Mots de longueur 19 :", len(mots_longueur_19))
 
 
 # PARTIE 4 : VALEUR D'UN MOT ###################################################
@@ -308,7 +259,118 @@ def generer_dico() :
     return jetons
 
 
+def init_pioche(dico):
+    """Q20) Initialise la pioche des jetons selon le dictionnaire dico."""
+    pioche = []
+    for lettre, infos in dico.items():
+        pioche.extend([lettre] * infos['occ'])
+    return pioche
+
+
+def valeur_mot(mot, dico):
+    """Q22) Calcule la valeur du mot selon le dictionnaire dico."""
+    valeur = 0
+    for lettre in mot:
+        valeur += dico[lettre]['val']
+    if len(mot) == 7:
+        valeur += 50
+    return valeur
+
+
+def meilleur_mot(motsfr, ll, dico):
+    """Q23) Trouve le mot de plus haute valeur jouable avec les lettres de la liste ll."""
+    liste_mots = []
+    main = list(ll)
+    liste_mots_longueur = select_mot_longueur(motsfr, len(ll))
+    
+    for mot in liste_mots_longueur:
+        if mot_jouable(mot, main):
+            liste_mots.append(mot)
+
+    if not liste_mots:
+        return None
+    
+    best_mot = liste_mots[0]
+    for i in range(1, len(liste_mots)):
+        if valeur_mot(liste_mots[i], dico) > valeur_mot(best_mot, dico):
+            best_mot = liste_mots[i]
+    
+    return best_mot
+
+
+def meilleurs_mots(motsfr, ll, dico):
+    """Q24) Renvoie la liste de tous les mots jouables de valeur maximale.
+    Si aucun mot jouable -> [].
+    """
+    main = list(ll)
+    candidats = []
+    for mot in select_mot_longueur(motsfr, len(main)):
+        if mot_jouable(mot, main):
+            candidats.append(mot)
+
+    if not candidats:
+        return []
+
+    max_val = max(valeur_mot(m, dico) for m in candidats)
+
+    return [m for m in candidats if valeur_mot(m, dico) == max_val]
+    
 # Programe principal #######################################################
 
 
+# Q1) Initialiser les bonus
+bonus = init_bonus()
 
+# Q2) Initialiser les jetons
+jetons = init_jetons()
+
+# 1. Afficher le plateau vide (Q5) 
+affiche_jetons(jetons, bonus)
+
+# 2. Test Q4 : Plaçons un jeton 'A' sur un bonus 'MD'
+
+# jetons[1][1] = 'A' # (1,1) est 'MD' -> '+'
+# jetons[5][5] = 'B' # (5,5) est 'LT' -> '-'
+# jetons[0][3] = 'C' # (0,3) est 'LD' -> '/'
+# jetons[0][0] = 'C' # (0,0) est 'MT' -> '*'
+# jetons[0][1] = 'E' # (0,1) est vide
+
+# Affiche le plateau avec les jetons ET les bonus
+affiche_jetons(jetons, bonus)
+
+
+# Q7) Initialiser la pioche aléatoire
+dico = generer_dico()
+pioche = init_pioche(dico)
+print(pioche)
+print("Pioche initiale (100 jetons) :", len(pioche))
+
+# Q8) Piocher 7 jetons
+main_joueur1 = piocher(7, pioche)
+print("Main du joueur 1 (7 jetons) :", main_joueur1)
+main_joueur2 = piocher(7, pioche)
+print("Main du joueur 2 (7 jetons) :", main_joueur2)
+
+# Q11) Échanger des jetons entre la main du joueur 2 et le sac
+echanger(main_joueur2[:3], main_joueur2, pioche)
+print("Main du joueur 2 après échange de 3 jetons :", main_joueur2)
+print("Pioche après échange :", len(pioche), "jetons restants")
+
+
+# Q12) Générer le dictionnaire français
+mots_fr = generer_dictfr()
+print("Nombre de mots dans le dictionnaire français :", len(mots_fr))
+
+# Q13) Sélectionner les mots commençant par 'Y'
+mots_commencant_par_Y = select_mot_initiale(mots_fr, 'Y')
+print("Mots commençant par 'Y' :", len(mots_commencant_par_Y))
+
+# Q14) Sélectionner les mots de longueur 19
+mots_longueur_19 = select_mot_longueur(mots_fr, 19)
+print("Mots de longueur 19 :", len(mots_longueur_19))
+
+
+# Q19) Générer le dictionnaire des jetons et le tester
+print(dico)
+print('Occurence K', dico['K']['occ'])
+print('Valeur Z', dico['Z']['val'])
