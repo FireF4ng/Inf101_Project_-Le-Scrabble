@@ -247,6 +247,8 @@ def mot_jouable(mot, ll):
     for lettre in mot:
         if lettre in liste_temp:
             liste_temp.remove(lettre)
+        elif JOKER in liste_temp:
+            liste_temp.remove(JOKER)
         else:
             return False
     return True
@@ -279,6 +281,7 @@ print("Mots commençant par 'Y' :", len(mots_commencant_par_Y))
 # Q14) Sélectionner les mots de longueur 19
 mots_longueur_19 = select_mot_longueur(mots_fr, 19)
 print("Mots de longueur 19 :", len(mots_longueur_19))
+
 
 # PARTIE 4 : VALEUR D'UN MOT ###################################################
 
