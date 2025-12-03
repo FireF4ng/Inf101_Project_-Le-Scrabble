@@ -324,26 +324,28 @@ def meilleurs_mots(motsfr, ll, dico):
 # PARTIE 5 : Premier programme principal ###################################################
 
 
-def tour_joueur(name, players_infos, pioche, mots_fr, dico):
+def tour_joueur(name, players_infos, pioche, mots_fr, dico, pas_tour_total):
     """Q25) Gère le tour d'un joueur."""
-    affiche_jetons()
+    # affiche_jetons() TODO : afficher le plateau de jeu
+    print(f"C'est à votre tour {name} de jouer !")
     flag = True
     while flag:
-        print(f"C'est à votre tour {name} de jouer !")
         print("Voici vos jetons : ", players_infos[name]['main'])
-        choix = input("Entrez le mot que vous souhaitez jouer (passer/change/proposer): ").lower()
+        choix = input("Entrez le mot que vous souhaitez jouer (passer/changer/proposer): ").lower()
 
         if choix == "passer":
             print(f"{name} a choisi de passer son tour.")
             flag = False
+            pas_tour_total[0] += 1
         
-        elif choix == "change":
+        elif choix == "changer":
             jetons_a_echanger = input("Entrez les jetons que vous souhaitez échanger (sans espace) (b4 pour revenir) : ").upper()
-            if jetons_a_echanger != "B4" and jetons_a_echanger != "" and all("A" <= i <= "Z" for i in jetons_a_echanger):
+            if jetons_a_echanger != "B4" and jetons_a_echanger != "" and all("A" <= i <= "Z" or i == JOKER for i in jetons_a_echanger):
                 players_infos[name]['main'], pioche = echanger(list(jetons_a_echanger), players_infos[name]['main'], pioche)
                 print(f"{name} a échangé les jetons {jetons_a_echanger}.")
                 flag = False
-                
+                pas_tour_total[0] = 0
+
             elif jetons_a_echanger != "B4":
                 print("Jetons invalides. Veuillez réessayer.")
         
@@ -356,15 +358,20 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico):
                         print(f"Le mot {mot_propose} est valide et vaut {valeur} points.")
                         players_infos[name]['score'] += valeur
                         for lettre in mot_propose:
-                            players_infos[name]['main'].remove(lettre)
+                            if lettre in players_infos[name]['main']:
+                                players_infos[name]['main'].remove(lettre)
+                            elif JOKER in players_infos[name]['main']:
+                                players_infos[name]['main'].remove(JOKER)
+
                         players_infos[name]['main'] = completer_main(players_infos[name]['main'], pioche)
                         flag = False
+                        pas_tour_total[0] = 0
 
                     else:
-                        print(f"Le mot {mot_propose} n'est pas dans le dictionnaire.")
+                        print(f"Le mot {mot_propose} n'est pas dans le dictionnaire. Veuillez réessayer.")
 
                 else:
-                    print(f"Le mot {mot_propose} ne peut pas être formé avec vos jetons.")
+                    print(f"Le mot {mot_propose} ne peut pas être formé avec vos jetons. Veuillez réessayer.")
 
             elif mot_propose != "B4":
                 print("Mot invalide. Veuillez réessayer.")
@@ -415,7 +422,9 @@ def play_scrabble():
         main_joueur = piocher(pioche, 7)
         players[name] = {'main': main_joueur, 'score': 0}
 
-    affiche_jetons()
+    bonus = init_bonus()
+    jetons = init_jetons()
+    affiche_jetons(jetons, bonus)
 
     print("--------------Le jeu commence !--------------")
 
@@ -443,14 +452,21 @@ def play_scrabble():
     
     print(f"{player} commence la partie !")
 
+    pas_tour_total = [0]
+
     while play:
 
         if check_end_game(players[player]['main'], pioche):
             play = False
             print("La partie est terminée !")
 
+        if pas_tour_total[0] >= nb_joueurs * 3:
+            play = False
+            print("La partie est terminée après 3 tours consécutifs de passage !")
+
         else:
-            tour_joueur(player, players, pioche, mots_fr, dico)
+            print(f"Il reste {len(pioche)} jetons dans la pioche.")
+            tour_joueur(player, players, pioche, mots_fr, dico, pas_tour_total)
             player = next_player(player, list(players.keys()))
     
     print("--------------Fin du jeu !--------------")
@@ -462,7 +478,7 @@ def play_scrabble():
         info['score'] -= sum
         print(f"{name} a un score de {info['score']} points.")
     
-    max_score = -1
+    max_score = -99999
     winners = []
 
     for name in players:
