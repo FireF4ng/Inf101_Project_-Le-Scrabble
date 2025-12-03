@@ -330,7 +330,7 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico):
     flag = True
     while flag:
         print(f"C'est à votre tour {name} de jouer !")
-        print("Voici vos jetons : ", main_joueur)
+        print("Voici vos jetons : ", players_infos[name]['main'])
         choix = input("Entrez le mot que vous souhaitez jouer (passer/change/proposer): ").lower()
 
         if choix == "passer":
@@ -340,7 +340,7 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico):
         elif choix == "change":
             jetons_a_echanger = input("Entrez les jetons que vous souhaitez échanger (sans espace) (b4 pour revenir) : ").upper()
             if jetons_a_echanger != "B4" and jetons_a_echanger != "" and all("A" <= i <= "Z" for i in jetons_a_echanger):
-                main_joueur, pioche = echanger(list(jetons_a_echanger), main_joueur, pioche)
+                players_infos[name]['main'], pioche = echanger(list(jetons_a_echanger), players_infos[name]['main'], pioche)
                 print(f"{name} a échangé les jetons {jetons_a_echanger}.")
                 flag = False
                 
@@ -350,10 +350,14 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico):
         elif choix == "proposer":
             mot_propose = input("Entrez le mot que vous souhaitez proposer (b4 pour revenir): ").upper()
             if mot_propose != "B4" and mot_propose != "" and all("A" <= i <= "Z" for i in mot_propose):
-                if mot_jouable(mot_propose, main_joueur):
+                if mot_jouable(mot_propose, players_infos[name]['main']):
                     if mot_propose in mots_fr:
                         valeur = valeur_mot(mot_propose, dico)
                         print(f"Le mot {mot_propose} est valide et vaut {valeur} points.")
+                        players_infos[name]['score'] += valeur
+                        for lettre in mot_propose:
+                            players_infos[name]['main'].remove(lettre)
+                        players_infos[name]['main'] = completer_main(players_infos[name]['main'], pioche)
                         flag = False
 
                     else:
@@ -448,6 +452,35 @@ def play_scrabble():
         else:
             tour_joueur(player, players, pioche, mots_fr, dico)
             player = next_player(player, list(players.keys()))
+    
+    print("--------------Fin du jeu !--------------")
+
+    for name, info in players.items():
+        sum = 0
+        for lettre in info['main']:
+            sum += dico[lettre]['val']
+        info['score'] -= sum
+        print(f"{name} a un score de {info['score']} points.")
+    
+    max_score = -1
+    winners = []
+
+    for name in players:
+        score = players[name]['score']
+
+        if score > max_score:
+            max_score = score
+            winners = []
+            winners.append(name)
+
+        elif score == max_score:
+            winners.append(name)
+
+    if len(winners) == 1:
+        print(f"Le gagnant est {winners[0]} avec {max_score} points !")
+    else:
+        print(f"Il y a une égalité entre les joueurs suivants avec {max_score} points : {', '.join(winners)}")
+
 
 # TODO : Calcul des scores et affichage du gagnant
 
