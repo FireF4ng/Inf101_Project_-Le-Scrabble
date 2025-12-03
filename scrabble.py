@@ -482,7 +482,8 @@ def play_scrabble():
         print(f"Il y a une égalité entre les joueurs suivants avec {max_score} points : {', '.join(winners)}")
 
 
-# TODO : Calcul des scores et affichage du gagnant
+if __name__ == "__main__":
+    play_scrabble()
 
 # DEBUG (Try functions) #######################################################
 
