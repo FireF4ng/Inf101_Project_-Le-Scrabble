@@ -12,7 +12,8 @@ Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
 # IMPORTS ######################################################################
 
 from pathlib import Path  # gestion fichiers
-import random  # pour la pioche aléatoire
+import random
+from unicodedata import name  # pour la pioche aléatoire
 
 
 # CONSTANTES ###################################################################
@@ -144,7 +145,7 @@ def init_pioche_alea():
     return liste_pioche
 
 
-def piocher(x, sac):
+def piocher(sac, x=7):
     """Q8) Pioche x jetons du sac."""
     jetons_pioches = []
     for _ in range(x):
@@ -164,10 +165,10 @@ def completer_main(main,sac):
 
 def echanger(jetons, main, sac):
     """Q10) Échange les jetons donnés entre la main et le sac."""
-    for jeton in jetons:
-        if jeton in main:
-            main.remove(jeton)
-            sac.append(jeton)
+    for j in jetons:
+        if j in main:
+            main.remove(j)
+            sac.append(j)
     main = completer_main(main, sac)
     return main, sac
 
@@ -218,7 +219,7 @@ def mot_jouable(mot, ll):
     return True
 
 
-def mots_jouables(motsfr, extra_lett, ll):
+def mots_jouables(motsfr, extra_lett=0, ll=[]):
     """Q16) Sélectionne les mots de motsfr pouvant être formés avec les lettres de la liste ll."""
     liste_mots_jetons = []
     main = list(ll)
@@ -299,25 +300,160 @@ def meilleur_mot(motsfr, ll, dico):
 
 
 def meilleurs_mots(motsfr, ll, dico):
-    """Q24) Renvoie la liste de tous les mots jouables de valeur maximale.
-    Si aucun mot jouable -> [].
     """
-    main = list(ll)
-    candidats = []
-    for mot in select_mot_longueur(motsfr, len(main)):
-        if mot_jouable(mot, main):
-            candidats.append(mot)
-
-    if not candidats:
-        return []
-
-    max_val = max(valeur_mot(m, dico) for m in candidats)
-
-    return [m for m in candidats if valeur_mot(m, dico) == max_val]
+    Q24) Renvoie la liste de tous les mots ayant la même valeur maximale
+    parmi les mots jouables avec les lettres de la liste ll.
+    """
+    mots_max = []
+    valeur_max = -1
     
-# Programe principal #######################################################
+    for mot in motsfr:
+        if len(mot) <= len(ll):
+            if mot_jouable(mot, ll):
+                val = valeur_mot(mot, dico)
+                
+                if val > valeur_max:
+                    valeur_max = val
+                    mots_max = [mot]
+                elif val == valeur_max:
+                    mots_max.append(mot)
+                    
+    return mots_max
 
 
+# PARTIE 5 : Premier programme principal ###################################################
+
+
+def tour_joueur(name, players_infos, pioche, mots_fr, dico):
+    """Q25) Gère le tour d'un joueur."""
+    affiche_jetons()
+    flag = True
+    while flag:
+        print(f"C'est à votre tour {name} de jouer !")
+        print("Voici vos jetons : ", main_joueur)
+        choix = input("Entrez le mot que vous souhaitez jouer (passer/change/proposer): ").lower()
+
+        if choix == "passer":
+            print(f"{name} a choisi de passer son tour.")
+            flag = False
+        
+        elif choix == "change":
+            jetons_a_echanger = input("Entrez les jetons que vous souhaitez échanger (sans espace) (b4 pour revenir) : ").upper()
+            if jetons_a_echanger != "B4" and jetons_a_echanger != "" and all("A" <= i <= "Z" for i in jetons_a_echanger):
+                main_joueur, pioche = echanger(list(jetons_a_echanger), main_joueur, pioche)
+                print(f"{name} a échangé les jetons {jetons_a_echanger}.")
+                flag = False
+                
+            elif jetons_a_echanger != "B4":
+                print("Jetons invalides. Veuillez réessayer.")
+        
+        elif choix == "proposer":
+            mot_propose = input("Entrez le mot que vous souhaitez proposer (b4 pour revenir): ").upper()
+            if mot_propose != "B4" and mot_propose != "" and all("A" <= i <= "Z" for i in mot_propose):
+                if mot_jouable(mot_propose, main_joueur):
+                    if mot_propose in mots_fr:
+                        valeur = valeur_mot(mot_propose, dico)
+                        print(f"Le mot {mot_propose} est valide et vaut {valeur} points.")
+                        flag = False
+
+                    else:
+                        print(f"Le mot {mot_propose} n'est pas dans le dictionnaire.")
+
+                else:
+                    print(f"Le mot {mot_propose} ne peut pas être formé avec vos jetons.")
+
+            elif mot_propose != "B4":
+                print("Mot invalide. Veuillez réessayer.")
+
+        else:
+            print("Choix invalide. Veuillez réessayer.")
+
+
+def check_end_game(main_joueur, sac):
+    """Q26) Vérifie si la partie doit se terminer."""
+    jetons_manquants = 7 - len(main_joueur)
+
+    if jetons_manquants <= 0:
+        return False
+    
+    if len(sac) < jetons_manquants:
+        return True
+    
+    return False
+
+
+def next_player(current_player, players):
+    """Q27) Passe au joueur suivant."""
+    current_index = players.index(current_player)
+    next_index = (current_index + 1) % len(players)
+    return players[next_index]
+
+
+def play_scrabble():
+    """Q28) Programme principal du jeu de Scrabble."""
+    flag = True
+    while flag:
+        nb_joueurs = int(input("Entrez le nombre de joueurs (2-4): "))
+
+        if nb_joueurs not in [2, 3, 4]:
+            print("Nombre de joueurs invalide. Veuillez entrer un numero valide (2-4).")
+
+        else:
+            flag = False
+
+    players = {}
+    mots_fr = generer_dictfr()
+    dico = generer_dico()
+    pioche = init_pioche(dico)
+
+    for i in range(nb_joueurs):
+        name = input(f"Entrez le nom du joueur {i+1}: ")
+        main_joueur = piocher(pioche, 7)
+        players[name] = {'main': main_joueur, 'score': 0}
+
+    affiche_jetons()
+
+    print("--------------Le jeu commence !--------------")
+
+    play = True
+    player = None
+    for tmp in players:
+        main = players[tmp]['main']
+
+        lettre = None
+        for c in main:
+            if c != '?':
+                if lettre is None:
+                    lettre = c
+
+                elif c < lettre:
+                    lettre = c
+
+        if player is None:
+            player = tmp
+            best_letter = lettre
+
+        if lettre < best_letter:
+            player = tmp
+            best_letter = lettre
+    
+    print(f"{player} commence la partie !")
+
+    while play:
+
+        if check_end_game(players[player]['main'], pioche):
+            play = False
+            print("La partie est terminée !")
+
+        else:
+            tour_joueur(player, players, pioche, mots_fr, dico)
+            player = next_player(player, list(players.keys()))
+
+# TODO : Calcul des scores et affichage du gagnant
+
+# DEBUG (Try functions) #######################################################
+
+"""
 # Q1) Initialiser les bonus
 bonus = init_bonus()
 
@@ -346,9 +482,9 @@ print(pioche)
 print("Pioche initiale (100 jetons) :", len(pioche))
 
 # Q8) Piocher 7 jetons
-main_joueur1 = piocher(7, pioche)
+main_joueur1 = piocher(pioche, 7)
 print("Main du joueur 1 (7 jetons) :", main_joueur1)
-main_joueur2 = piocher(7, pioche)
+main_joueur2 = piocher(pioche, 7)
 print("Main du joueur 2 (7 jetons) :", main_joueur2)
 
 # Q11) Échanger des jetons entre la main du joueur 2 et le sac
@@ -374,3 +510,4 @@ print("Mots de longueur 19 :", len(mots_longueur_19))
 print(dico)
 print('Occurence K', dico['K']['occ'])
 print('Valeur Z', dico['Z']['val'])
+"""
