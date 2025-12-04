@@ -351,7 +351,7 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico, pas_tour_total):
         
         elif choix == "proposer":
             mot_propose = input("Entrez le mot que vous souhaitez proposer (b4 pour revenir): ").upper()
-            if mot_propose != "B4" and mot_propose != "" and all("A" <= i <= "Z" for i in mot_propose):
+            if mot_propose != "B4" and mot_propose != "" and all("A" <= i <= "Z" for i in mot_propose) and len(mot_propose) < 2:
                 if mot_jouable(mot_propose, players_infos[name]['main']):
                     if mot_propose in mots_fr:
                         valeur = valeur_mot(mot_propose, dico)
@@ -419,6 +419,16 @@ def play_scrabble():
 
     for i in range(nb_joueurs):
         name = input(f"Entrez le nom du joueur {i+1}: ")
+        flag_name = True
+        while flag_name:
+            if name in players:
+                name = input("Ce nom est déjà pris. Veuillez entrer un autre nom: ")
+            
+            elif name.strip() == "":
+                name = f'Joueur{i+1}'
+
+            else:
+                flag_name = False
         main_joueur = piocher(pioche, 7)
         players[name] = {'main': main_joueur, 'score': 0}
 
@@ -500,6 +510,36 @@ def play_scrabble():
 
 if __name__ == "__main__":
     play_scrabble()
+
+
+# PARTIE 6 : Placement de mot ###################################################
+
+
+def lire_coords():
+    flag_cords = True
+    while flag_cords:
+        x = int(input("Entrez la coordonnée x (Colonne 1-15) : ")) - 1
+        if x < 0 or x >= TAILLE_PLATEAU:
+            print("Coordonnée x invalide. Veuillez réessayer.")
+
+        else:
+            y = int(input("Entrez la coordonnée y (Row 1-15) : ")) - 1
+            if y < 0 or y >= TAILLE_PLATEAU:
+                print("Coordonnée y invalide. Veuillez réessayer.")
+            
+            else:
+                orientation = input("Entrez l'orientation (H pour horizontal, V pour vertical) : ").upper()
+                if orientation not in ['H', 'V']:
+                    print("Orientation invalide. Veuillez réessayer.")
+
+                else:
+                    flag_cords = False
+
+    return x, y, orientation
+
+
+
+
 
 # DEBUG (Try functions) #######################################################
 
