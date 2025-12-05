@@ -304,69 +304,6 @@ def mot_jouable_plateau(mot, main, plateau):
     return True
 
 
-def reconstruire_mot_autour(plateau, mot, i, j, direction):
-    """Reconstruit le mot complet final."""
-
-    resultat = ""
-    index = 0
-
-    if direction == "H":
-        col = j - 1
-        fini = True
-
-        while fini:
-
-            if col >= 0 and plateau[i][col] != "":
-                resultat = plateau[i][col] + resultat
-                col = col - 1
-
-            else:
-                fini = False
-
-        resultat = resultat + mot
-        col = j + len(mot)
-        fini = True
-
-        while fini:
-
-            if col < TAILLE_PLATEAU and plateau[i][col] != "":
-
-                resultat = resultat + plateau[i][col]
-                col = col + 1
-
-            else:
-                fini = False
-
-    else:
-        lig = i - 1
-        fini = True
-
-        while fini:
-
-            if lig >= 0 and plateau[lig][j] != "":
-                resultat = plateau[lig][j] + resultat
-                lig = lig - 1
-
-            else:
-                fini = False
-
-        resultat = resultat + mot
-        lig = i + len(mot)
-        fini = True
-        
-        while fini:
-
-            if lig < TAILLE_PLATEAU and plateau[lig][j] != "":
-                resultat = resultat + plateau[lig][j]
-                lig = lig + 1
-
-            else:
-                fini = False
-
-    return resultat
-
-
-
 # PARTIE 4 : VALEUR D'UN MOT ###################################################
 
 
