@@ -266,44 +266,6 @@ def mots_jouables(motsfr, ll, extra_lett=None):
     return playable
 
 
-def mot_jouable_plateau(mot, main, plateau):
-    """Vérifie si le mot peut être formé avec les lettres de la main et celles déjà sur le plateau."""
-
-    index = 0
-    taille = len(mot)
-
-    while index < taille:
-        lettre = mot[index]
-        trouve_plateau = False
-        lig = 0
-
-        while lig < TAILLE_PLATEAU and trouve_plateau is False:
-            col = 0
-
-            while col < TAILLE_PLATEAU and trouve_plateau is False:
-
-                if plateau[lig][col] == lettre:
-                    trouve_plateau = True
-
-                col = col + 1
-            lig = lig + 1
-
-        if trouve_plateau is False:
-
-            if lettre in main:
-                main.remove(lettre)
-
-            elif JOKER in main:
-                main.remove(JOKER)
-
-            else:
-                return False
-            
-        index = index + 1
-
-    return True
-
-
 # PARTIE 4 : VALEUR D'UN MOT ###################################################
 
 
@@ -501,32 +463,39 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
     """Q31) Place un mot sur le plateau si c'est possible.
     Q32) Calcule le score d'un mot placé en (i,j) en tenant compte des bonus."""
 
-    bonus_lettre = {'LD': 2, 'LT': 3}
-    bonus_mot = {'MD': 2, 'MT': 3}
-
     lettres_a_poser = tester_placement(plateau, i, j, direction, mot)
     
     if lettres_a_poser == []:
         return False, 0
         
     main_temp = list(main)
-    jetons_a_retirer = []
-    
-    for lett in lettres_a_poser:
+    possible = True
+    index_lettre = 0
+
+    while index_lettre < len(lettres_a_poser) and possible:
+        lett = lettres_a_poser[index_lettre]
 
         if lett in main_temp:
             main_temp.remove(lett)
-            jetons_a_retirer.append(lett)
 
         elif JOKER in main_temp:
             main_temp.remove(JOKER)
-            jetons_a_retirer.append(JOKER)
 
         else:
-            return False, 0
-                
-    for jeton in jetons_a_retirer:
-        main.remove(jeton)
+            possible = False
+
+        index_lettre = index_lettre + 1
+            
+    if possible is False:
+        return False, 0
+
+    for lett in lettres_a_poser:
+            
+            if lett in main:
+                main.remove(lett)
+
+            else:
+                main.remove(JOKER)
 
     score = 0
     multiplicateur_mot_total = 1
@@ -543,42 +512,34 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
             col = j + k
         
         lettre_mot = mot[k]
-        case_actuelle = plateau[lig][col]
-        bonus_case = bonus[lig][col]
+        case_avant = plateau[lig][col]
+        plateau[lig][col] = lettre_mot
+        valeur_lettre = dico[lettre_mot]['val']
 
-        if case_actuelle == "":
-            plateau[lig][col] = lettre_mot
-            lettres_posees += 1
+        if case_avant == "":
+            lettres_posees = lettres_posees + 1
+            bonus_case = bonus[lig][col]
+            
+            if bonus_case == 'LD':
+                valeur_lettre = valeur_lettre * 2
 
-            if bonus_case in bonus_lettre:
-                score += dico[lettre_mot]['val'] * bonus_lettre[bonus_case]
+            elif bonus_case == 'LT':
+                valeur_lettre = valeur_lettre * 3
 
-            else:
-                score += dico[lettre_mot]['val']
+            elif bonus_case == 'MD':
+                multiplicateur_mot_total = multiplicateur_mot_total * 2
 
-            if bonus_case in bonus_mot:
-                multiplicateur_mot_total *= bonus_mot[bonus_case]
+            elif bonus_case == 'MT':
+                multiplicateur_mot_total = multiplicateur_mot_total * 3
+                
+            bonus[lig][col] = "" 
+            
+        score = score + valeur_lettre
 
-        else:
-            score += dico[lettre_mot]['val']
+    score = score * multiplicateur_mot_total
 
     if lettres_posees == 7:
-        score += 50
-
-    score *= multiplicateur_mot_total
-
-    for k in range(len(mot)):
-
-        if direction == 'V':
-            lig = i + k
-            col = j
-
-        else:
-            lig = i
-            col = j + k
-
-        if bonus[lig][col] != "" and plateau[lig][col] == mot[k]:
-            bonus[lig][col] = ""
+        score = score + 50
             
     return True, score
 
@@ -595,13 +556,25 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico, plateau, bonus, pas_
 
     while flag:
         print("Voici vos jetons : ", players_infos[name]['main'])
-        choix = input("Entrez le mot que vous souhaitez jouer (passer/echanger/proposer): ").lower()
+        choix = input("Entrez le mot que vous souhaitez jouer (show/hint/passer/echanger/proposer): ").lower()
 
         if choix == "passer":
             print(f"{name} a choisi de passer son tour.")
             flag = False
             pas_tour_total[0] += 1
         
+        elif choix == "hint":
+            best_mots = meilleurs_mots(mots_fr, players_infos[name]['main'], dico)
+
+            if not best_mots:
+                print("Aucun mot jouable avec vos jetons.")
+            else:
+                best_score = valeur_mot(best_mots[0], dico)
+                print(f"Meilleur(s) mot(s) jouable(s) avec vos jetons pour {best_score} points : {', '.join(best_mots)}")
+
+        elif choix == "show":
+            affiche_jetons(plateau, bonus)
+
         elif choix == "echanger":
             jetons_a_echanger = input("Entrez les jetons que vous souhaitez échanger (sans espace) (b4 pour revenir) : ").upper()
 
@@ -617,39 +590,28 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico, plateau, bonus, pas_
         elif choix == "proposer":
             mot_propose = input("Entrez le mot que vous souhaitez proposer (b4 pour revenir): ").upper()
 
-            if mot_propose != "B4" and mot_propose != "" and all("A" <= i <= "Z" for i in mot_propose) and len(mot_propose) >= 2:
-                main_temp = list(players_infos[name]['main'])
+            if mot_propose == "B4":
+                print("Retour.")
+            
+            elif mot_propose not in mots_fr:
+                print(f"Le mot {mot_propose} n'est pas dans le dictionnaire.")
 
-                if mot_jouable_plateau(mot_propose, main_temp, plateau):
+            else:
+                print(f"Où placer le début du mot {mot_propose} ?")
+                x, y, direction = lire_coords()
+                succes, score = placer_mot(plateau, bonus, players_infos[name]['main'], mot_propose, y, x, direction, dico)
 
-                    if mot_propose in mots_fr:
-                        x, y, direction = lire_coords()
-                        flag_placement = True
-                        
-                        while flag_placement:
-                            can_place, score = placer_mot(plateau, bonus, players_infos[name]['main'], mot_propose, y, x, direction, dico)
-
-                            if can_place:
-                                players_infos[name]['score'] += score
-                                print(f"Le mot {mot_propose} a été placé avec succès et vous rapporte {score} points. Votre score total est maintenant de {players_infos[name]['score']} points.")
-                                flag_placement = False
-
-                            else:
-                                print(f"Le mot {mot_propose} ne peut pas être placé aux coordonnées ({x+1}, {y+1}) en direction {'vertical' if direction == 'V' else 'horizontal'}. Veuillez réessayer les coordonnées et l'orientation.")
-                                x, y, direction = lire_coords()                          
-
-                        players_infos[name]['main'] = completer_main(players_infos[name]['main'], pioche)
-                        flag = False
-                        pas_tour_total[0] = 0
-
-                    else:
-                        print(f"Le mot {mot_propose} n'est pas dans le dictionnaire. Veuillez réessayer.")
+                if succes:
+                    print(f"Bravo ! {mot_propose} posé pour {score} points.")
+                    players_infos[name]['score'] += score
+                    
+                    completer_main(players_infos[name]['main'], pioche)
+                    
+                    pas_tour_total[0] = 0
+                    flag = False
 
                 else:
-                    print(f"Le mot {mot_propose} ne peut pas être formé avec vos jetons. Veuillez réessayer.")
-
-            elif mot_propose != "B4":
-                print("Mot invalide. Veuillez réessayer.")
+                    print("Placement impossible (manque de place, lettres non correspondantes, ou lettres manquantes en main).")
 
         else:
             print("Choix invalide. Veuillez réessayer.")
