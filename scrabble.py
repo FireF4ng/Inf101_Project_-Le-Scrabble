@@ -99,7 +99,7 @@ def affiche_jetons(table_jetons, table_bonus):
     for lig in range(TAILLE_PLATEAU):
 
         # numéro de ligne
-        line_label = str(lig + 1).rjust(TAILLE_MARGE - 1)
+        line_label = chr(ord('A') + lig).ljust(TAILLE_MARGE - 1)
         print(f"{line_label} ", end="|")
 
         for col in range(TAILLE_PLATEAU):
@@ -404,7 +404,7 @@ def lire_coords():
             print("Coordonnée x invalide. Veuillez réessayer.")
 
         else:
-            y = int(input("Entrez la coordonnée y (Row 1-15) : ")) - 1
+            y = ord(input("Entrez la coordonnée y (Row A-O) : ").upper()) - ord('A')
 
             if y < 0 or y >= TAILLE_PLATEAU:
                 print("Coordonnée y invalide. Veuillez réessayer.")
