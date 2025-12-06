@@ -13,8 +13,8 @@ Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
 
 from pathlib import Path  # gestion fichiers
 import random
-from unicodedata import name  # pour la pioche aléatoire
-
+import tkinter as tk
+from tkinter import messagebox
 
 # CONSTANTES ###################################################################
 
@@ -26,6 +26,14 @@ JOKER = '?'  # jeton joker
 
 # ⚠ pas de variable globales, sauf cas exceptionnel
 
+COULEURS = {
+    'MT': '#ff3333',
+    'MD': '#ffcc00',
+    'LT': '#3333ff',
+    'LD': '#add8e6',
+    'NORMAL': '#006400',
+    'LETTRE': '#f0e68c'
+}
 
 # PARTIE 1 : LE PLATEAU ########################################################
 
@@ -472,8 +480,7 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
     possible = True
     index_lettre = 0
 
-    while index_lettre < len(lettres_a_poser) and possible:
-        lett = lettres_a_poser[index_lettre]
+    for lett in lettres_a_poser:
 
         if lett in main_temp:
             main_temp.remove(lett)
@@ -482,69 +489,57 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
             main_temp.remove(JOKER)
 
         else:
-            possible = False
-
-        index_lettre = index_lettre + 1
+            return False, 0
             
-    if possible is False:
-        return False, 0
-
     for lett in lettres_a_poser:
-            
-            if lett in main:
-                main.remove(lett)
 
-            else:
-                main.remove(JOKER)
+        if lett in main:
+            main.remove(lett)
+
+        else:
+            main.remove(JOKER)
 
     score = 0
-    multiplicateur_mot_total = 1
-    lettres_posees = 0
+    multiplicateur_mot = 1
+    nb_nouvelles_lettres = 0
 
     for k in range(len(mot)):
 
-        if direction == 'V':
-            lig = i + k
-            col = j
+        if direction == 'H':
+            lig, col = i, j + k
 
         else:
-            lig = i
-            col = j + k
+            lig, col = i + k, j
         
-        lettre_mot = mot[k]
-        case_avant = plateau[lig][col]
-        plateau[lig][col] = lettre_mot
-        valeur_lettre = dico[lettre_mot]['val']
-
-        if case_avant == "":
-            lettres_posees = lettres_posees + 1
-            bonus_case = bonus[lig][col]
+        lettre = mot[k]
+        ancienne_lettre = plateau[lig][col]
+        
+        plateau[lig][col] = lettre
+        
+        val_lettre = dico.get(lettre, {'val':0})['val']
+        
+        if ancienne_lettre == "":
+            nb_nouvelles_lettres += 1
+            b = bonus[lig][col]
             
-            if bonus_case == 'LD':
-                valeur_lettre = valeur_lettre * 2
-
-            elif bonus_case == 'LT':
-                valeur_lettre = valeur_lettre * 3
-
-            elif bonus_case == 'MD':
-                multiplicateur_mot_total = multiplicateur_mot_total * 2
-
-            elif bonus_case == 'MT':
-                multiplicateur_mot_total = multiplicateur_mot_total * 3
-                
-            bonus[lig][col] = "" 
+            if b == 'LD': val_lettre *= 2
+            elif b == 'LT': val_lettre *= 3
+            elif b == 'MD': multiplicateur_mot *= 2
+            elif b == 'MT': multiplicateur_mot *= 3
             
-        score = score + valeur_lettre
-
-    score = score * multiplicateur_mot_total
-
-    if lettres_posees == 7:
-        score = score + 50
+            bonus[lig][col] = ""
             
+        score += val_lettre
+
+    score *= multiplicateur_mot
+    
+    if nb_nouvelles_lettres == 7:
+        score += 50
+        
     return True, score
 
 
-# PARTIE 7 : Programe Principale Final ###################################################
+# PARTIE 7 : Programme Principal Final ###################################################
 
 
 def tour_joueur(name, players_infos, pioche, mots_fr, dico, plateau, bonus, pas_tour_total):
@@ -731,8 +726,387 @@ def play_scrabble():
         print(f"Il y a une égalité entre les joueurs suivants avec {max_score} points : {', '.join(winners)}")
 
 
+# PARTIE 8 : BONUS ###################################################
+
+
+# PARTIE 8 : INTERFACE GRAPHIQUE COMPLÈTE ######################################
+
+def lancer_graphique():
+    """Fonction principale de l'interface graphique (Tkinter)."""
+    
+    # Initialisation des données
+    mots_fr = generer_dictfr()
+    dico = generer_dico()
+    bonus = init_bonus()
+    plateau = init_jetons()
+    pioche = init_pioche(dico)
+    
+    # Variables d'état
+    noms_joueurs = []
+    players = {}
+    etat = {
+        'joueur_actuel_idx': 0, 
+        'passes_consecutifs': 0, 
+        'mode_pc': False,
+        'fin_partie': False
+    }
+
+    
+    # IA et Aide
+    def trouver_meilleur_coup(main_joueur):
+        """Cherche un mot jouable avec la main qui rentre sur le plateau."""
+        candidats = meilleurs_mots(mots_fr, main_joueur, dico)
+        
+        for mot in candidats[:50]:
+            for i in range(TAILLE_PLATEAU):
+                for j in range(TAILLE_PLATEAU):
+                    for d in ['H', 'V']:
+                        if tester_placement(plateau, i, j, d, mot):
+                            return mot, i, j, d
+                        
+        return None
+
+    
+    def tour_ordi():
+        """Logique du tour de l'ordinateur."""
+        nom, infos = "Ordinateur", players["Ordinateur"]
+        
+        coup = trouver_meilleur_coup(infos['main'])
+        
+        if coup:
+            mot, i, j, d = coup
+            ok, pts = placer_mot(plateau, bonus, infos['main'], mot, i, j, d, dico)
+
+            if ok:
+                infos['score'] += pts
+                completer_main(infos['main'], pioche)
+                etat['passes_consecutifs'] = 0
+                messagebox.showinfo("Ordinateur", f"L'ordi a joué {mot} pour {pts} points !")
+
+            else:
+                action_passer()
+        else:
+
+            if len(pioche) >= 7:
+                echanger(infos['main'], infos['main'], pioche)
+                messagebox.showinfo("Ordinateur", "L'ordi échange ses lettres.")
+
+            else:
+                action_passer()
+
+
+    def get_joueur_courant():
+        nom = noms_joueurs[etat['joueur_actuel_idx']]
+        return nom, players[nom]
+
+    
+    def rafraichir_affichage():
+        """Met à jour l'écran de jeu."""
+
+        if etat['fin_partie']: 
+            return
+
+        for i in range(TAILLE_PLATEAU):
+            for j in range(TAILLE_PLATEAU):
+                lettre = plateau[i][j]
+                b_val = bonus[i][j]
+                lbl = grille_labels[i][j]
+                
+                if lettre != "":
+                    lbl.config(text=lettre, bg=COULEURS['LETTRE'], fg='black', relief="raised")
+
+                else:
+                    couleur = COULEURS.get(b_val, COULEURS['NORMAL'])
+                    texte = b_val if b_val else ""
+                    lbl.config(text=texte, bg=couleur, fg='white', relief="sunken")
+        
+        nom, infos = get_joueur_courant()
+        lbl_tour.config(text=f"C'est à {nom} de jouer", fg="blue")
+        lbl_main.config(text=f"Main :  {' '.join(infos['main'])}")
+        lbl_pioche.config(text=f"Pioche : {len(pioche)}")
+        
+        txt_scores = "   ".join([f"{n}: {d['score']}" for n, d in players.items()])
+        lbl_scores.config(text=txt_scores)
+
+
+    def changer_joueur():
+        etat['joueur_actuel_idx'] = (etat['joueur_actuel_idx'] + 1) % len(noms_joueurs)
+        rafraichir_affichage()
+        
+        if etat['mode_pc'] and get_joueur_courant()[0] == "Ordinateur":
+            fenetre.after(1000, tour_ordi)
+
+
+    # Actions du Joueur
+    def action_passer():
+        nom, _ = get_joueur_courant()
+        etat['passes_consecutifs'] += 1
+        
+        if etat['passes_consecutifs'] >= len(noms_joueurs) * 3:
+            gerer_fin("Blocage (trop de passes)")
+
+        else:
+            if nom != "Ordinateur":
+                messagebox.showinfo("Passer", f"{nom} passe son tour.")
+
+            changer_joueur()
+
+
+    def action_echanger():
+        nom, infos = get_joueur_courant()
+        saisie = entree_echange.get().upper().strip()
+        
+        if not saisie: 
+            return
+        
+        lettres = list(saisie)
+        
+        if len(pioche) < len(lettres):
+            messagebox.showerror("Erreur", "Pioche insuffisante.")
+            return
+            
+        copie_main = list(infos['main'])
+        possible = True
+        for l in lettres:
+
+            if l in copie_main: 
+                copie_main.remove(l)
+
+            else: 
+                possible = False
+            
+        if possible:
+            nouvelle_main, _ = echanger(lettres, infos['main'], pioche)
+            infos['main'] = nouvelle_main
+            entree_echange.delete(0, tk.END) # Vider champ
+            messagebox.showinfo("Succès", "Lettres échangées.")
+            etat['passes_consecutifs'] = 0
+            changer_joueur()
+
+        else:
+            messagebox.showerror("Erreur", "Vous n'avez pas ces lettres.")
+
+
+    def action_jouer():
+        nom, infos = get_joueur_courant()
+        
+        mot = entree_mot.get().upper().strip()
+        s_lig = entree_lig.get().upper().strip()
+        s_col = entree_col.get().strip()
+        direction = entree_dir.get().upper().strip()
+        
+        if not (mot and s_lig and s_col and direction): 
+            return
+        
+        if mot not in mots_fr:
+            messagebox.showerror("Erreur", "Mot inconnu.")
+            return
+
+        if not s_lig or not s_col:
+            messagebox.showerror("Erreur", "Coordonnées invalides.")
+            return
+        
+        lig = ord(s_lig[0]) - 65
+        col = int(s_col) - 1
+        
+        if lig < 0 or lig >= 15 or col < 0 or col >= 15:
+            messagebox.showerror("Erreur", "Coordonnées invalides.")
+            return
+
+        if not (0 <= lig < 15 and 0 <= col < 15): 
+            return
+
+        ok, pts = placer_mot(plateau, bonus, infos['main'], mot, lig, col, direction, dico)
+        
+        if ok:
+            infos['score'] += pts
+            completer_main(infos['main'], pioche)
+            etat['passes_consecutifs'] = 0
+            messagebox.showinfo("Bravo", f"{mot} posé ! +{pts} pts.")
+            
+            entree_mot.delete(0, tk.END)
+            entree_lig.delete(0, tk.END)
+            entree_col.delete(0, tk.END)
+            entree_dir.delete(0, tk.END)
+            
+            if not pioche and not infos['main']:
+                gerer_fin("Plus de jetons")
+
+            else:
+                changer_joueur()
+
+        else:
+            messagebox.showerror("Erreur", "Placement impossible.")
+
+
+    def action_indice():
+        """Aide : Propose le meilleur coup possible."""
+        nom, infos = get_joueur_courant()
+        coup = trouver_meilleur_coup(infos['main'])
+        
+        if coup:
+            mot, i, j, d = coup
+            coord = f"{chr(i+65)}{j+1}"
+            messagebox.showinfo("Indice", f"Meilleur coup trouvé : {mot} en {coord} ({d})")
+
+        else:
+            messagebox.showinfo("Indice", "Aucun coup évident trouvé (essayez d'échanger).")
+
+
+    def gerer_fin(raison):
+        etat['fin_partie'] = True
+        msg = f"FIN DE PARTIE ({raison})\n\n"
+        
+        for nom, p in players.items():
+            malus = sum(dico[l]['val'] for l in p['main'] if l in dico)
+            p['score'] -= malus
+            msg += f"{nom}: {p['score']} pts (Malus -{malus})\n"
+            
+        gagnant = max(players, key=lambda n: players[n]['score'])
+        msg += f"\n GAGNANT : {gagnant} !"
+        messagebox.showinfo("Résultats", msg)
+        fenetre.quit()
+
+
+    def demarrer_jeu(mode, liste_noms):
+        etat['mode_pc'] = (mode == "PVE")
+        
+        for nom in liste_noms:
+            players[nom] = {'main': piocher(pioche, 7), 'score': 0}
+            noms_joueurs.append(nom)
+            
+        if etat['mode_pc']:
+            noms_joueurs.append("Ordinateur")
+            players["Ordinateur"] = {'main': piocher(pioche, 7), 'score': 0}
+            
+        etat['joueur_actuel_idx'] = 0
+        frame_setup.pack_forget()
+        frame_jeu.pack(fill="both", expand=True)
+        rafraichir_affichage()
+
+
+    def ecran_noms(mode):
+        frame_mode.pack_forget()
+        frame_setup.pack(pady=20)
+        
+        for w in frame_setup.winfo_children(): 
+            w.destroy()
+        
+        tk.Label(frame_setup, text="Configuration", font=("Arial", 16)).pack(pady=10)
+        entries = []
+
+
+        def valider():
+            noms = [e.get().strip() or f"J{k+1}" for k, e in enumerate(entries)]
+            demarrer_jeu(mode, noms)
+
+        if mode == "PVE":
+            tk.Label(frame_setup, text="Votre Nom :").pack()
+            e = tk.Entry(frame_setup); e.pack(); entries.append(e)
+            tk.Button(frame_setup, text="JOUER", command=valider, bg="green", fg="white").pack(pady=20)
+
+        else:
+            tk.Label(frame_setup, text="Nombre de joueurs (2-4) :").pack()
+            spin = tk.Spinbox(frame_setup, from_=2, to=4, width=5)
+            spin.pack()
+            
+            f_dyn = tk.Frame(frame_setup)
+            f_dyn.pack(pady=10)
+            
+            def gen_champs():
+                for w in f_dyn.winfo_children():
+                    w.destroy()
+                entries.clear()
+                
+                n = int(spin.get())
+                
+                for i in range(n):
+                    tk.Label(f_dyn, text=f"Joueur {i+1} :").pack()
+                    e = tk.Entry(f_dyn)
+                    e.pack()
+                    entries.append(e)
+                
+                btn_go.config(state="normal")
+                
+            tk.Button(frame_setup, text="Ok", command=gen_champs).pack()
+            btn_go = tk.Button(frame_setup, text="LANCER", state="disabled", bg="green", fg="white", command=valider)
+            btn_go.pack(pady=20)
+
+    fenetre = tk.Tk()
+    fenetre.title("Projet Scrabble")
+    fenetre.geometry("1100x750")
+
+    frame_mode = tk.Frame(fenetre)
+    frame_mode.pack(pady=50)
+    tk.Label(frame_mode, text="SCRABBLE", font=("Arial", 30, "bold")).pack(pady=20)
+    tk.Button(frame_mode, text="Joueur vs Joueur", width=20, font=("Arial", 12), bg="#4CAF50", fg="white", command=lambda: ecran_noms("PVP")).pack(pady=10)
+    tk.Button(frame_mode, text="Joueur vs Ordi", width=20, font=("Arial", 12), bg="#2196F3", fg="white", command=lambda: ecran_noms("PVE")).pack(pady=10)
+
+    frame_setup = tk.Frame(fenetre)
+
+    frame_jeu = tk.Frame(fenetre)
+    
+    f_gauche = tk.Frame(frame_jeu, bg="#333", bd=2)
+    f_gauche.pack(side="left", padx=10, pady=10)
+    
+    for j in range(TAILLE_PLATEAU):
+        tk.Label(f_gauche, text=str(j+1), width=4, bg="#333", fg="white").grid(row=0, column=j+1)
+    
+    grille_labels = []
+    for i in range(TAILLE_PLATEAU):
+        tk.Label(f_gauche, text=chr(65+i), width=2, bg="#333", fg="white").grid(row=i+1, column=0)
+        ligne = []
+        for j in range(TAILLE_PLATEAU):
+            l = tk.Label(f_gauche, width=4, height=2, relief="sunken", bd=1)
+            l.grid(row=i+1, column=j+1, padx=1, pady=1)
+            ligne.append(l)
+        grille_labels.append(ligne)
+
+    f_droite = tk.Frame(frame_jeu, padx=20)
+    f_droite.pack(side="right", fill="both", expand=True)
+
+    lbl_tour = tk.Label(f_droite, text="...", font=("Arial", 16, "bold"))
+    lbl_tour.pack(pady=10)
+    lbl_scores = tk.Label(f_droite, text="...", font=("Arial", 10))
+    lbl_scores.pack()
+    lbl_pioche = tk.Label(f_droite, text="...")
+    lbl_pioche.pack()
+    
+    lbl_main = tk.Label(f_droite, text="...", font=("Courier", 14, "bold"), bg="#eee", pady=10)
+    lbl_main.pack(fill="x", pady=20)
+
+    f_play = tk.LabelFrame(f_droite, text="Jouer un mot", padx=5, pady=5)
+    f_play.pack(fill="x", pady=5)
+    
+    tk.Label(f_play, text="Mot :").grid(row=0, column=0)
+    entree_mot = tk.Entry(f_play); entree_mot.grid(row=0, column=1, columnspan=3, sticky="we")
+    
+    tk.Label(f_play, text="Lig (A-O):").grid(row=1, column=0)
+    entree_lig = tk.Entry(f_play, width=5); entree_lig.grid(row=1, column=1)
+    
+    tk.Label(f_play, text="Col (1-15):").grid(row=1, column=2)
+    entree_col = tk.Entry(f_play, width=5); entree_col.grid(row=1, column=3)
+    
+    tk.Label(f_play, text="Sens (H/V):").grid(row=2, column=0)
+    entree_dir = tk.Entry(f_play, width=5); entree_dir.grid(row=2, column=1)
+    
+    tk.Button(f_play, text="VALIDER", bg="#4CAF50", fg="white", command=action_jouer).grid(row=3, column=0, columnspan=4, sticky="we", pady=10)
+
+    f_ech = tk.LabelFrame(f_droite, text="Actions", padx=5, pady=5)
+    f_ech.pack(fill="x", pady=10)
+    
+    tk.Label(f_ech, text="Lettres à jeter :").pack(anchor="w")
+    entree_echange = tk.Entry(f_ech); entree_echange.pack(fill="x")
+    tk.Button(f_ech, text="ECHANGER", bg="orange", command=action_echanger).pack(fill="x", pady=2)
+    tk.Button(f_ech, text="PASSER TOUR", bg="#f44336", fg="white", command=action_passer).pack(fill="x", pady=5)
+
+    tk.Button(f_droite, text="INDICE (Meilleur coup)", bg="lightblue", command=action_indice).pack(pady=10)
+    tk.Button(f_droite, text="QUITTER", command=fenetre.quit).pack(side="bottom", pady=10)
+
+    fenetre.mainloop()
+
 if __name__ == "__main__":
-    play_scrabble()
+    lancer_graphique()
 
 
 # DEBUG (Try functions) #######################################################
