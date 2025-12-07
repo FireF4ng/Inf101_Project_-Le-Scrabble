@@ -17,7 +17,9 @@ import tkinter as tk # interface graphique
 from tkinter import messagebox, simpledialog # boîtes de dialogue
 import copy # copies profondes
 import json   # pour les stats
-import pickle # pour la sauvegarde
+import pickle
+
+from matplotlib.pyplot import flag # pour la sauvegarde
 
 # CONSTANTES ###################################################################
 
@@ -464,9 +466,12 @@ def tester_placement(plateau, i, j, direction, mot):
         if j + len(mot) > TAILLE_PLATEAU: 
             return False, "Le mot dépasse du plateau (Horizontal)."
 
-    else:
+    elif direction == 'V':
         if i + len(mot) > TAILLE_PLATEAU: 
             return False, "Le mot dépasse du plateau (Vertical)."
+        
+    else:
+        return False, "Direction invalide."
     
     # Vérification du plateau vide
     plateau_vide = True
@@ -484,8 +489,11 @@ def tester_placement(plateau, i, j, direction, mot):
         if direction == 'H':
             lig, col = i, j + k
 
-        else:
+        elif direction == 'V':
             lig, col = i + k, j
+
+        else:
+            return False, "Direction invalide."
 
         if lig == 7 and col == 7:
             touche_case_centrale = True
@@ -524,7 +532,8 @@ def tester_placement(plateau, i, j, direction, mot):
 
 def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
     """Q31) Place un mot sur le plateau si c'est possible.
-    Q32) Calcule le score d'un mot placé en (i,j) en tenant compte des bonus."""
+    Q32) Calcule le score d'un mot placé en (i,j) en tenant compte des bonus.
+    Q33) Bonus: Calcule les scores des mots orthogonaux créés par le placement du mot."""
 
     ok, res = tester_placement(plateau, i, j, direction, mot)
     
@@ -553,50 +562,127 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
         else: 
             main.remove(JOKER)
 
-    score = 0
-    multiplicateur_mot = 1
+    score_total = 0
+    multiplicateur_mot_principal = 1
+    score_mot_principal = 0
     nb_nouvelles = 0
 
     # Calcul du score
     for k in range(len(mot)):
         if direction == 'H': 
             lig, col = i, j + k
+            dir_ortho = 'V'
 
-        else: 
+        elif direction == 'V':
             lig, col = i + k, j
+            dir_ortho = 'H'
+
+        else:
+            return False, 0, "Direction invalide."
         
         lettre = mot[k]
-        ancienne = plateau[lig][col]
+        ancienne_lettre = plateau[lig][col]
+        
         plateau[lig][col] = lettre
+        val_lettre = dico.get(lettre, {'val':0})['val']
+
+        mult_lettre_principal = 1
         
-        val = dico.get(lettre, {'val':0})['val']
-        
-        if ancienne == "":
+        if ancienne_lettre == "":
             nb_nouvelles += 1
             b = bonus[lig][col]
 
             if b == 'LD': 
-                val *= 2
+                mult_lettre_principal = 2
 
             elif b == 'LT': 
-                val *= 3
+                mult_lettre_principal = 3
 
             elif b == 'MD': 
-                multiplicateur_mot *= 2
+                multiplicateur_mot_principal = 2
 
             elif b == 'MT': 
-                multiplicateur_mot *= 3
+                multiplicateur_mot_principal = 3
+
+            # Q33 Calcul des mots orthogonaux
+            if dir_ortho == 'V':
+                voisin_av = (lig > 0 and plateau[lig-1][col] != "")
+                voisin_ap = (lig < 14 and plateau[lig+1][col] != "")
+
+            elif dir_ortho == 'H':
+                voisin_av = (col > 0 and plateau[lig][col-1] != "")
+                voisin_ap = (col < 14 and plateau[lig][col+1] != "")
+
+            if voisin_av or voisin_ap:
+                l_start, c_start = lig, col
+                l_end, c_end = lig, col
+                
+                # Trouver les limites du mot adjacent
+                if dir_ortho == 'V':
+                    while l_start > 0 and plateau[l_start-1][col] != "": 
+                        l_start -= 1
+
+                    while l_end < 14 and plateau[l_end+1][col] != "": 
+                        l_end += 1
+                elif dir_ortho == 'H':
+                    while c_start > 0 and plateau[lig][c_start-1] != "": 
+                        c_start -= 1
+
+                    while c_end < 14 and plateau[lig][c_end+1] != "": 
+                        c_end += 1
+                
+                mot_ortho_str = ""
+                mot_ortho_score = 0
+                mot_ortho_mult = 1
+                curr_l, curr_c = l_start, c_start
+
+                flag = True
+                while flag:
+                    # Calcul du score du mot orthogonal
+                    l_val = dico.get(plateau[curr_l][curr_c], {'val':0})['val']
+                    
+                    # Application des bonus si cette lettre est la nouvelle lettre posée
+                    if curr_l == lig and curr_c == col:
+
+                        if b == 'LD': 
+                            l_val *= 2
+
+                        elif b == 'LT': 
+                            l_val *= 3
+
+                        elif b == 'MD': 
+                            mot_ortho_mult *= 2
+
+                        elif b == 'MT': 
+                            mot_ortho_mult *= 3
+                    
+                    mot_ortho_score += l_val
+                    mot_ortho_str += plateau[curr_l][curr_c]
+                    
+                    # Avancer dans la direction orthogonale
+                    if curr_l == l_end and curr_c == c_end: 
+                        flag = False
+                    
+                    elif dir_ortho == 'V': 
+                        curr_l += 1
+
+                    elif dir_ortho == 'H':
+                        curr_c += 1
+                
+                score_total += (mot_ortho_score * mot_ortho_mult)
 
             bonus[lig][col] = ""
             
-        score += val
+        # Ajout de la lettre au score du mot principal
+        score_mot_principal += (val_lettre * mult_lettre_principal)
 
-    score *= multiplicateur_mot
+    # Ajout du score du mot principal
+    score_total += (score_mot_principal * multiplicateur_mot_principal)
 
     if nb_nouvelles == 7: 
-        score += 50
+        score_total += 50
         
-    return True, score, "OK"
+    return True, score_total, "OK"
 
 
 # PARTIE 7 : Programme Principal Final ###################################################
