@@ -981,8 +981,10 @@ def lancer_graphique():
         
         lettres = list(saisie)
         
-        if len(pioche) < len(lettres):
-            messagebox.showerror("Erreur", "Pioche insuffisante.")
+        if len(pioche) < 7:
+            messagebox.showwarning("Blocage", "Il reste moins de 7 lettres dans la pioche.\n" \
+            "Vous ne pouvez plus échanger.\n\n" \
+            "Si vous ne pouvez pas jouer de mot, cliquez sur 'PASSER TOUR'.\n (La partie finira si tous les joueurs passent).")
             return
         
         # Vérification que le joueur possède bien les lettres à échanger
@@ -1065,7 +1067,7 @@ def lancer_graphique():
             entree_dir.delete(0, tk.END)
             
             if not pioche and not infos['main']:
-                gerer_fin("Plus de jetons")
+                gerer_fin("Plus de jetons", joueur_finissant=nom)
 
             else:
                 changer_joueur()
@@ -1075,23 +1077,71 @@ def lancer_graphique():
 
 
     def action_indice_mots():
-        """Aide 1 : Affiche tous les mots possibles avec la main."""
+        """Aide 1 : Trouve des mots jouables avec la main"""
 
         nom, infos = get_joueur_courant()
         
-        liste_mots = mots_jouables(mots_fr, infos['main'])
+        liste_main = mots_jouables(mots_fr, infos['main'])
+        liste_main = list(set(liste_main))
+        liste_main.sort(key=len, reverse=True)
         
-        # Affichage des mots possibles
-        if liste_mots:
-            liste_mots.sort(key=len, reverse=True)
-            msg = ", ".join(liste_mots[:50])
-
-            if len(liste_mots) > 50: 
-                msg += "..."
-            messagebox.showinfo("Mots Possibles", f"Voici des mots faisables avec ta main :\n\n{msg}")
+        mots_plateau = set()
+        
+        lettres_board_coords = []
+        for i in range(TAILLE_PLATEAU):
+            for j in range(TAILLE_PLATEAU):
+                if plateau[i][j] != "":
+                    lettres_board_coords.append((plateau[i][j], i, j))
+        
+        if not lettres_board_coords:
+            # Premier mot : tous les mots jouables
+            if not plateau[7][7]:
+                 mots_plateau = set(liste_main)
 
         else:
-            messagebox.showinfo("Mots Possibles", "Aucun mot trouvable avec ces lettres.")
+            # Recherche des mots pouvant se connecter au plateau
+            for lettre_p, lig_p, col_p in lettres_board_coords:
+                main_virtuelle = infos['main'] + [lettre_p]
+                candidats = mots_jouables(mots_fr, main_virtuelle)
+                
+                for mot in candidats:
+                    for k in range(len(mot)):
+                        if mot[k] == lettre_p:
+                            if tester_placement(plateau, lig_p, col_p - k, 'H', mot)[0]:
+                                mots_plateau.add(mot)
+                            
+                            if tester_placement(plateau, lig_p - k, col_p, 'V', mot)[0]:
+                                mots_plateau.add(mot)
+
+        liste_plateau = list(mots_plateau)
+        liste_plateau.sort(key=len, reverse=True)
+        
+        # Affichage des résultats
+        msg = ""
+        
+        msg += "LISTE 1 : Avec ta main uniquement \n"
+        if liste_main:
+            msg += ", ".join(liste_main[:20])
+
+            if len(liste_main) > 20: 
+                msg += "..."
+
+        else:
+            msg += "(Rien)"
+            
+        msg += "\n\n"
+        msg += "LISTE 2 : En utilisant le plateau \n"
+
+        if liste_plateau:
+            msg += ", ".join(liste_plateau[:20])
+
+            if len(liste_plateau) > 20: 
+                msg += "..."
+
+        else:
+            msg += "(Aucun mot ne peut se connecter ou manque de place)"
+            
+        messagebox.showinfo("Indice Détaillé", msg)
 
     
     def action_indice_placement():
@@ -1140,22 +1190,34 @@ def lancer_graphique():
             messagebox.showerror("Impossible", f"Tu ne peux pas placer '{mot}' (manque de place ou lettres manquantes).")
 
 
-    def gerer_fin(raison):
+    def gerer_fin(raison, joueur_finissant=None):
         """Gère la fin de la partie."""
 
         etat['fin_partie'] = True
         msg = f"FIN DE PARTIE ({raison})\n\n"
 
+        total_reliquat_adversaires = 0
+
         # Calcul des scores finaux
         for nom, p in players.items():
-            malus = 0
+            valeur_main = 0
             for l in p['main']:
                 if l in dico:
-                    malus += dico[l]['val']
+                    valeur_main += dico[l]['val']
             
-            p['score'] -= malus
-            msg += f"{nom}: {p['score']} pts (Malus -{malus})\n"
+            p['score'] -= valeur_main
+
+            if joueur_finissant and nom != joueur_finissant:
+                total_reliquat_adversaires += valeur_main
+
+            msg += f"{nom}: {p['score']} pts (Reliquat restant : -{valeur_main})\n"
         
+        # Bonus pour le joueur finissant
+        if joueur_finissant:
+            players[joueur_finissant]['score'] += total_reliquat_adversaires
+            msg += f"\nBONUS : {joueur_finissant} a fini et récupère {total_reliquat_adversaires} pts des adversaires !\n"
+            msg += f"=> Score final {joueur_finissant} : {players[joueur_finissant]['score']} pts\n"
+
         # Determination du gagnant
         gagnant = max(players, key=lambda n: players[n]['score'])
         msg += f"\n GAGNANT : {gagnant} !"
