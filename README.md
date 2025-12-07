@@ -3,6 +3,10 @@
 **Groupe :** ima04_B
 **Fichier :** `i11_Daniel_Nikolai_projet.py`
 
+**Auteurs :**
+* **Daniel Centov** (Daniel.Centov@etu.univ-grenoble-alpes.fr)
+* **Nikolai Kolenbet** (Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr)
+
 ## Description
 Implémentation complète du jeu de Scrabble en Python avec interface graphique.
 Le projet inclut un mode Joueur vs Joueur, une IA (Joueur vs Ordi), la gestion des sauvegardes et des statistiques détaillées.
