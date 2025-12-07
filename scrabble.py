@@ -13,10 +13,12 @@ Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
 
 from pathlib import Path  # gestion fichiers
 from py_compile import main
-import random
-import tkinter as tk
-from tkinter import messagebox, simpledialog
-import copy
+import random # génération aléatoire
+import tkinter as tk # interface graphique
+from tkinter import messagebox, simpledialog # boîtes de dialogue
+import copy # copies profondes
+import json   # pour les stats
+import pickle # pour la sauvegarde
 
 # CONSTANTES ###################################################################
 
@@ -758,10 +760,8 @@ def play_scrabble():
         print(f"Il y a une égalité entre les joueurs suivants avec {max_score} points : {', '.join(winners)}")
 
 
-# PARTIE 8 : BONUS ###################################################
-
-
 # PARTIE 8 : INTERFACE GRAPHIQUE COMPLÈTE ######################################
+
 
 def lancer_graphique():
     """Fonction principale de l'interface graphique (Tkinter)."""
@@ -782,6 +782,8 @@ def lancer_graphique():
         'mode_pc': False,
         'fin_partie': False
     }
+
+    scrabbles_count = {}
 
     
     # IA et Aide
@@ -969,6 +971,9 @@ def lancer_graphique():
         
         if ok:
             infos['score'] += pts
+            if len(mot) == 7:
+                scrabbles_count[nom] = scrabbles_count.get(nom, 0) + 1
+
             completer_main(infos['main'], pioche)
             etat['passes_consecutifs'] = 0
             messagebox.showinfo("Bravo", f"{mot} posé ! +{pts} pts.")
@@ -1057,16 +1062,21 @@ def lancer_graphique():
             
         gagnant = max(players, key=lambda n: players[n]['score'])
         msg += f"\n GAGNANT : {gagnant} !"
+
+        mettre_a_jour_stats(gagnant)
+
         messagebox.showinfo("Résultats", msg)
         fenetre.quit()
 
 
     def demarrer_jeu(mode, liste_noms):
         etat['mode_pc'] = (mode == "PVE")
+        scrabbles_count.clear()
         
         for nom in liste_noms:
             players[nom] = {'main': piocher(pioche, 7), 'score': 0}
             noms_joueurs.append(nom)
+            scrabbles_count[nom] = 0
             
         if etat['mode_pc']:
             noms_joueurs.append("Ordinateur")
@@ -1076,6 +1086,115 @@ def lancer_graphique():
         frame_setup.pack_forget()
         frame_jeu.pack(fill="both", expand=True)
         rafraichir_affichage()
+
+
+    def action_sauvegarder():
+        """Enregistre l'état complet du jeu."""
+        nom_fichier = "partie_scrabble.dat"
+        data = {
+            'plateau': plateau,
+            'bonus': bonus,
+            'pioche': pioche,
+            'players': players,
+            'noms_joueurs': noms_joueurs,
+            'etat': etat,
+            'scrabbles_count': scrabbles_count
+        }
+        
+        with open(nom_fichier, "wb") as f:
+            pickle.dump(data, f)
+            
+        messagebox.showinfo("Sauvegarde", f"Partie sauvegardée dans '{nom_fichier}' !")
+
+    
+    def action_charger():
+        """Charge une partie existante."""
+        nom_fichier = "partie_scrabble.dat"
+        
+        # Vérification préventive
+        if Path(nom_fichier).exists():
+            with open(nom_fichier, "rb") as f:
+                data = pickle.load(f)
+            
+            # Restauration des données
+            for i in range(TAILLE_PLATEAU):
+                for j in range(TAILLE_PLATEAU):
+                    plateau[i][j] = data['plateau'][i][j]
+                    bonus[i][j] = data['bonus'][i][j]
+            
+            pioche[:] = data['pioche']
+            
+            players.clear()
+            players.update(data['players'])
+            
+            noms_joueurs[:] = data['noms_joueurs']
+            etat.update(data['etat'])
+            scrabbles_count.update(data['scrabbles_count'])
+            
+            # Mise à jour de l'affichage
+            frame_mode.pack_forget()
+            frame_jeu.pack(fill="both", expand=True)
+            rafraichir_affichage()
+            messagebox.showinfo("Chargement", "Partie chargée avec succès !")
+            
+        else:
+            messagebox.showwarning("Attention", "Aucun fichier de sauvegarde trouvé.")
+
+    
+    def mettre_a_jour_stats(gagnant):
+        """Lit, met à jour et sauvegarde les stats globales."""
+        fichier_stats = "stats_scrabble.json"
+        
+        # 1. Chargement conditionnel
+        if Path(fichier_stats).exists():
+            with open(fichier_stats, "r") as f:
+                stats = json.load(f)
+        else:
+            stats = {}
+            
+        # 2. Mise à jour
+        for nom, data in players.items():
+            if nom not in stats:
+                stats[nom] = {'parties': 0, 'victoires': 0, 'total_score': 0, 'scrabbles': 0}
+            
+            s = stats[nom]
+            s['parties'] += 1
+            s['total_score'] += data['score']
+            s['scrabbles'] += scrabbles_count.get(nom, 0)
+
+            if nom == gagnant:
+                s['victoires'] += 1
+                
+        # 3. Sauvegarde
+        with open(fichier_stats, "w") as f:
+            json.dump(stats, f, indent=4)
+
+
+    def voir_statistiques():
+        """Affiche une fenêtre avec les stats."""
+        fichier_stats = "stats_scrabble.json"
+        
+        if Path(fichier_stats).exists():
+            with open(fichier_stats, "r") as f:
+                stats = json.load(f)
+            
+            msg = "STATISTIQUES DES JOUEURS :\n\n"
+            for nom, s in stats.items():
+                moyenne = 0
+                if s['parties'] > 0:
+                    moyenne = s['total_score'] // s['parties']
+                    
+                msg += f"JOUEUR : {nom}\n"
+                msg += f" - Parties jouées : {s['parties']}\n"
+                msg += f" - Victoires : {s['victoires']}\n"
+                msg += f" - Score Moyen : {moyenne}\n"
+                msg += f" - Scrabbles : {s['scrabbles']}\n"
+                msg += "-"*20 + "\n"
+                
+            messagebox.showinfo("Statistiques", msg)
+
+        else:
+            messagebox.showinfo("Statistiques", "Aucune statistique enregistrée pour le moment.")
 
 
     def ecran_noms(mode):
@@ -1129,16 +1248,21 @@ def lancer_graphique():
     fenetre.title("Projet Scrabble")
     fenetre.geometry("1100x750")
 
+    # Menu principal
     frame_mode = tk.Frame(fenetre)
     frame_mode.pack(pady=50)
     tk.Label(frame_mode, text="SCRABBLE", font=("Arial", 30, "bold")).pack(pady=20)
     tk.Button(frame_mode, text="Joueur vs Joueur", width=20, font=("Arial", 12), bg="#4CAF50", fg="white", command=lambda: ecran_noms("PVP")).pack(pady=10)
     tk.Button(frame_mode, text="Joueur vs Ordi", width=20, font=("Arial", 12), bg="#2196F3", fg="white", command=lambda: ecran_noms("PVE")).pack(pady=10)
+    tk.Button(frame_mode, text="Charger une partie", width=20, font=("Arial", 12), bg="orange", command=action_charger).pack(pady=10)
+    tk.Button(frame_mode, text="Voir Statistiques", width=20, font=("Arial", 12), bg="purple", fg="white", command=voir_statistiques).pack(pady=10)
 
+    # Page Jeu
     frame_setup = tk.Frame(fenetre)
 
     frame_jeu = tk.Frame(fenetre)
     
+    # Partie gauche (plateau)
     f_gauche = tk.Frame(frame_jeu, bg="#333", bd=2)
     f_gauche.pack(side="left", padx=10, pady=10)
     
@@ -1158,6 +1282,7 @@ def lancer_graphique():
 
         grille_labels.append(ligne)
 
+    # Partie droite (infos et actions)
     f_droite = tk.Frame(frame_jeu, padx=20)
     f_droite.pack(side="right", fill="both", expand=True)
 
@@ -1198,6 +1323,8 @@ def lancer_graphique():
 
     tk.Button(f_droite, text="INDICE 1 : Mots possibles", bg="lightblue", command=action_indice_mots).pack(pady=5)
     tk.Button(f_droite, text="INDICE 2 : Meilleur placement", bg="lightblue", command=action_indice_placement).pack(pady=5)
+    tk.Button(f_droite, text="SAUVEGARDER PARTIE", bg="gray", fg="white", command=action_sauvegarder).pack(pady=10)
+    
     tk.Button(f_droite, text="QUITTER", command=fenetre.quit).pack(side="bottom", pady=10)
 
     fenetre.mainloop()
