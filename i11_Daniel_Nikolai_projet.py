@@ -1023,6 +1023,15 @@ def lancer_graphique():
             frame_jeu.pack_forget()
             frame_mode.pack(pady=50)
 
+    
+    def quitter_programme():
+        """Quitte le programme."""
+
+        reponse = messagebox.askyesno("Quitter", "Voulez-vous vraiment quitter le jeu ?\nTout progrès non sauvegardé sera perdu.")
+
+        if reponse:
+            fenetre.quit()
+
 
     def changer_joueur():
         """Passer au joueur suivant."""
@@ -1645,7 +1654,7 @@ def lancer_graphique():
     tk.Button(f_droite, text="SAUVEGARDER PARTIE", bg="gray", fg="white", command=action_sauvegarder).pack(pady=10)
     tk.Button(f_droite, text="MENU PRINCIPAL", bg="#555", fg="white", command=action_retour_menu).pack(side="bottom", fill="x", pady=5)
 
-    tk.Button(f_droite, text="QUITTER", command=fenetre.quit).pack(side="bottom", pady=10)
+    tk.Button(f_droite, text="QUITTER", command=quitter_programme).pack(side="bottom", pady=10)
 
     fenetre.mainloop()
 
