@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 -----------------------------------------------------------------------------
-i11_Daniel-Centov_Nikolai-Kolenbet_projet.py : CR projet « scrabble », groupe ima04_B
+i11_Daniel_Nikolai_projet.py : CR projet « scrabble », groupe ima04_B
 
 Daniel-Centov Daniel.Centov@etu.univ-grenoble-alpes.fr
 Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
@@ -12,7 +12,6 @@ Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
 # IMPORTS ######################################################################
 
 from pathlib import Path  # gestion fichiers
-from py_compile import main
 import random # génération aléatoire
 import tkinter as tk # interface graphique
 from tkinter import messagebox, simpledialog # boîtes de dialogue
@@ -146,20 +145,33 @@ def init_pioche_alea():
 
     liste_pioche = []
 
+    # Génération aléatoire des lettres
     for i in range(100):
         lettre = random.choice("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         liste_pioche.append(lettre)
 
+    # Garantie de la présence des jokers et de toutes les lettres
     if JOKER not in liste_pioche:
-        liste_pioche[random.randint(0, 50)] = JOKER
-        liste_pioche[random.randint(50, 99)] = JOKER
+        liste_pioche.insert(random.randint(0, 50), JOKER)
+        liste_pioche.insert(random.randint(50, 99), JOKER)
 
     if "ABCDEFGHIJKLMNOPQRSTUVWXYZ" not in liste_pioche:
 
         for lettre in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
 
             if lettre not in liste_pioche:
-                liste_pioche[random.randint(0, 99)] = lettre
+                flag = True
+
+                while flag:
+                    x = random.randint(0, 99)
+
+                    if liste_pioche[x] == JOKER:
+                        x = random.randint(0, 99)
+
+                    else:
+                        flag = False
+
+                liste_pioche[x] = lettre
 
     return liste_pioche
 
@@ -211,8 +223,14 @@ def generer_dictfr(nf='littre.txt') :
     73085
     """
     mots = []
+
     with Path(nf).open(encoding='utf_8') as fich_mots :
-        for line in fich_mots : mots.append(line.strip().upper())
+        for line in fich_mots : 
+            mot = line.strip().upper()
+
+            if mot.isalpha():
+                    mots.append(mot)
+
     return mots
 
 
@@ -260,13 +278,10 @@ def mot_jouable(mot, ll):
     return True
 
 
-def mots_jouables(motsfr, ll, extra_lett=None):
+def mots_jouables(motsfr, ll):
     """Q16) Sélectionne les mots de motsfr pouvant être formés avec les lettres de la liste ll."""
 
-    if extra_lett is None:
-        extra_lett = []
-
-    pool = list(ll) + list(extra_lett)
+    pool = list(ll)
     playable = []
 
     max_len = len(pool)
@@ -314,6 +329,7 @@ def init_pioche(dico):
 
     pioche = []
 
+    # Initialisation de la pioche
     for lettre, infos in dico.items():
         pioche.extend([lettre] * infos['occ'])
 
@@ -325,6 +341,7 @@ def valeur_mot(mot, dico):
 
     valeur = 0
 
+    # Calcul du score
     for lettre in mot:
         if lettre in dico:
             valeur += dico[lettre]['val']
@@ -335,10 +352,10 @@ def valeur_mot(mot, dico):
     return valeur
 
 
-def meilleur_mot(motsfr, ll, dico, extra_lett=None):
+def meilleur_mot(motsfr, ll, dico):
     """Q23) Trouve le mot de plus haute valeur jouable avec les lettres de la liste ll."""
 
-    candidats = mots_jouables(motsfr, ll, extra_lett)
+    candidats = mots_jouables(motsfr, ll)
 
     if not candidats:
         return ""
@@ -346,6 +363,7 @@ def meilleur_mot(motsfr, ll, dico, extra_lett=None):
     best = candidats[0]
     best_score = valeur_mot(best, dico)
 
+    # Parcours des candidats pour trouver le meilleur mot
     for mot in candidats[1:]:
         s = valeur_mot(mot, dico)
 
@@ -356,10 +374,10 @@ def meilleur_mot(motsfr, ll, dico, extra_lett=None):
     return best
 
 
-def meilleurs_mots(motsfr, ll, dico, extra_lett=None):
+def meilleurs_mots(motsfr, ll, dico):
     """Q24) Renvoie la liste de tous les mots ayant la même valeur maximale parmi les mots jouables avec les lettres de la liste ll."""
 
-    candidats = mots_jouables(motsfr, ll, extra_lett)
+    candidats = mots_jouables(motsfr, ll)
 
     if not candidats:
         return []
@@ -367,6 +385,7 @@ def meilleurs_mots(motsfr, ll, dico, extra_lett=None):
     best_score = -1
     bests = []
 
+    # Parcours des candidats pour trouver les meilleurs mots
     for mot in candidats:
         s = valeur_mot(mot, dico)
 
@@ -413,6 +432,7 @@ def lire_coords():
 
     flag_cords = True
 
+    # Boucle de saisie des coordonnées et de l'orientation
     while flag_cords:
         x = int(input("Entrez la coordonnée x (Colonne 1-15) : ")) - 1
 
@@ -439,6 +459,7 @@ def lire_coords():
 def tester_placement(plateau, i, j, direction, mot):
     """Q30) Teste si le mot peut être placé aux coordonnées (i,j) dans la direction dir."""
 
+    # Vérification des limites du plateau
     if direction == 'H':
         if j + len(mot) > TAILLE_PLATEAU: 
             return False, "Le mot dépasse du plateau (Horizontal)."
@@ -447,6 +468,7 @@ def tester_placement(plateau, i, j, direction, mot):
         if i + len(mot) > TAILLE_PLATEAU: 
             return False, "Le mot dépasse du plateau (Vertical)."
     
+    # Vérification du plateau vide
     plateau_vide = True
     for lig in range(TAILLE_PLATEAU):
         for col in range(TAILLE_PLATEAU):
@@ -457,6 +479,7 @@ def tester_placement(plateau, i, j, direction, mot):
     touche_autre_mot = False
     lettres_necessaires = []
 
+    # Vérification des lettres nécessaires
     for k in range(len(mot)):
         if direction == 'H':
             lig, col = i, j + k
@@ -486,6 +509,7 @@ def tester_placement(plateau, i, j, direction, mot):
             elif col < 14 and plateau[lig][col+1] != "": 
                 touche_autre_mot = True
 
+    # Vérifications finales
     if plateau_vide:
         if not touche_case_centrale:
             return False, "Le premier mot doit passer par l'étoile centrale (H8)."
@@ -504,6 +528,7 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
 
     ok, res = tester_placement(plateau, i, j, direction, mot)
     
+    # Vérification disponibilité lettres
     if not ok:
         return False, 0, res
     
@@ -532,6 +557,7 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
     multiplicateur_mot = 1
     nb_nouvelles = 0
 
+    # Calcul du score
     for k in range(len(mot)):
         if direction == 'H': 
             lig, col = i, j + k
@@ -583,10 +609,12 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico, plateau, bonus, pas_
     print(f"C'est à votre tour {name} de jouer !")
     flag = True
 
+    # Boucle du tour
     while flag:
         print("Voici vos jetons : ", players_infos[name]['main'])
         choix = input("Entrez le mot que vous souhaitez jouer (show/hint/passer/echanger/proposer): ").lower()
 
+        # Traitement du choix
         if choix == "passer":
             print(f"{name} a choisi de passer son tour.")
             flag = False
@@ -607,6 +635,7 @@ def tour_joueur(name, players_infos, pioche, mots_fr, dico, plateau, bonus, pas_
         elif choix == "echanger":
             jetons_a_echanger = input("Entrez les jetons que vous souhaitez échanger (sans espace) (b4 pour revenir) : ").upper()
 
+            # Validation des jetons à échanger
             if jetons_a_echanger != "B4" and jetons_a_echanger != "" and all("A" <= i <= "Z" or i == JOKER for i in jetons_a_echanger):
                 players_infos[name]['main'], pioche = echanger(list(jetons_a_echanger), players_infos[name]['main'], pioche)
                 print(f"{name} a échangé les jetons {jetons_a_echanger}.")
@@ -651,6 +680,7 @@ def play_scrabble():
 
     flag = True
 
+    # Nombre de joueurs
     while flag:
         nb_joueurs = int(input("Entrez le nombre de joueurs (2-4): "))
 
@@ -669,6 +699,7 @@ def play_scrabble():
     plateau = init_jetons()
     bonus = init_bonus()
 
+    # Initialisation joueurs
     players = {}
     for i in range(nb_joueurs):
         name = input(f"Entrez le nom du joueur {i+1}: ")
@@ -688,6 +719,7 @@ def play_scrabble():
 
     print("--------------Le jeu commence !--------------")
 
+    # Détermination du premier joueur
     player = None
     for tmp in players:
         main = players[tmp]['main']
@@ -714,6 +746,7 @@ def play_scrabble():
     pas_tour_total = [0]
     play = True
 
+    # Boucle principale de jeu
     while play:
 
         if check_end_game(players[player]['main'], pioche):
@@ -731,6 +764,7 @@ def play_scrabble():
     
     print("--------------Fin du jeu !--------------")
 
+    # Calcul des scores finaux
     for name, info in players.items():
         sum = 0
 
@@ -743,6 +777,7 @@ def play_scrabble():
     max_score = -99999
     winners = []
 
+    # Détermination du ou des gagnants
     for name in players:
         score = players[name]['score']
 
@@ -786,14 +821,16 @@ def lancer_graphique():
     scrabbles_count = {}
 
     
-    # IA et Aide
     def trouver_meilleur_coup(main_joueur):
         """Cherche un mot jouable avec la main qui rentre sur le plateau."""
+
+        # Recherche des candidats
         candidats = meilleurs_mots(mots_fr, main_joueur, dico)
 
         meilleur_coup = None
         meilleur_score = -1
         
+        # Recherche du meilleur coup
         for mot in candidats[:30]:
             for i in range(TAILLE_PLATEAU):
                 for j in range(TAILLE_PLATEAU):
@@ -816,9 +853,12 @@ def lancer_graphique():
     
     def tour_ordi():
         """Logique du tour de l'ordinateur."""
+
         nom, infos = "Ordinateur", players["Ordinateur"]
+        # Recherche du meilleur coup
         coup = trouver_meilleur_coup(infos['main'])
         
+        # Exécution du coup
         if coup:
             mot, i, j, d = coup
             ok, pts, msg = placer_mot(plateau, bonus, infos['main'], mot, i, j, d, dico)
@@ -829,6 +869,8 @@ def lancer_graphique():
                 etat['passes_consecutifs'] = 0
 
                 rafraichir_affichage()
+                fenetre.update_idletasks()
+
                 messagebox.showinfo("Ordinateur", f"L'ordi a joué {mot} pour {pts} points !")
                 changer_joueur()
 
@@ -840,6 +882,7 @@ def lancer_graphique():
             if len(pioche) >= 7:
                 echanger(infos['main'], infos['main'], pioche)
                 messagebox.showinfo("Ordinateur", "L'ordi échange ses lettres.")
+                etat['passes_consecutifs'] += 1
                 changer_joueur()
 
             else:
@@ -847,16 +890,20 @@ def lancer_graphique():
 
 
     def get_joueur_courant():
+        """Renvoie le nom et les infos du joueur courant."""
+
         nom = noms_joueurs[etat['joueur_actuel_idx']]
         return nom, players[nom]
 
     
     def rafraichir_affichage():
         """Met à jour l'écran de jeu."""
-
+    
+        # Vérification de fin de partie
         if etat['fin_partie']: 
             return
 
+        # Mise à jour des éléments graphiques
         for i in range(TAILLE_PLATEAU):
             for j in range(TAILLE_PLATEAU):
                 lettre = plateau[i][j]
@@ -871,6 +918,7 @@ def lancer_graphique():
                     texte = b_val if b_val else ""
                     lbl.config(text=texte, bg=couleur, fg='white', relief="sunken")
         
+        # Mise à jour des éléments graphiques hors-plateau
         nom, infos = get_joueur_courant()
         lbl_tour.config(text=f"C'est à {nom} de jouer", fg="blue")
         lbl_main.config(text=f"Main {nom} :  {' '.join(infos['main'])}")
@@ -880,33 +928,54 @@ def lancer_graphique():
         lbl_scores.config(text=txt_scores)
 
 
+    def action_retour_menu():
+        """Arrête la partie en cours et revient au menu."""
+
+        reponse = messagebox.askyesno("Menu Principal", "Voulez-vous vraiment quitter la partie en cours ?\nTout progrès non sauvegardé sera perdu.")
+
+        if reponse:
+            frame_jeu.pack_forget()
+            frame_mode.pack(pady=50)
+
+
     def changer_joueur():
+        """Passer au joueur suivant."""
+
         etat['joueur_actuel_idx'] = (etat['joueur_actuel_idx'] + 1) % len(noms_joueurs)
         rafraichir_affichage()
         
+        # Tour de l'ordi si necessaire
         if etat['mode_pc'] and get_joueur_courant()[0] == "Ordinateur":
             fenetre.after(1000, tour_ordi)
 
 
-    # Actions du Joueur
+
     def action_passer():
+        """Le joueur passe son tour."""
+
         nom, _ = get_joueur_courant()
         etat['passes_consecutifs'] += 1
         
+        # Vérification de fin de partie
         if etat['passes_consecutifs'] >= len(noms_joueurs) * 3:
             gerer_fin("Blocage (trop de passes)")
 
+        # Sinon, passer le tour
         else:
-            if nom != "Ordinateur":
-                messagebox.showinfo("Passer", f"{nom} passe son tour.")
+            messagebox.showinfo("Passer", f"{nom} passe son tour.")
 
             changer_joueur()
 
 
     def action_echanger():
+        """Le joueur échange des lettres."""
+
         nom, infos = get_joueur_courant()
+
+        # Lecture de l'entrée
         saisie = entree_echange.get().upper().strip()
         
+        # Vérifications basiques
         if not saisie: 
             return
         
@@ -915,7 +984,8 @@ def lancer_graphique():
         if len(pioche) < len(lettres):
             messagebox.showerror("Erreur", "Pioche insuffisante.")
             return
-            
+        
+        # Vérification que le joueur possède bien les lettres à échanger
         copie_main = list(infos['main'])
         possible = True
         for l in lettres:
@@ -926,6 +996,7 @@ def lancer_graphique():
             else: 
                 possible = False
             
+        # Échange des lettres si possible
         if possible:
             nouvelle_main, _ = echanger(lettres, infos['main'], pioche)
             infos['main'] = nouvelle_main
@@ -939,13 +1010,17 @@ def lancer_graphique():
 
 
     def action_jouer():
+        """Le joueur tente de placer un mot."""
+
         nom, infos = get_joueur_courant()
         
+        # Lecture des entrées
         mot = entree_mot.get().upper().strip()
         s_lig = entree_lig.get().upper().strip()
         s_col = entree_col.get().strip()
         direction = entree_dir.get().upper().strip()
         
+        # Vérifications basiques
         if not (mot and s_lig and s_col and direction): 
             return
         
@@ -967,17 +1042,23 @@ def lancer_graphique():
         if not (0 <= lig < 15 and 0 <= col < 15): 
             return
 
+        taille_main_avant = len(infos['main'])
+
+        # Placement du mot
         ok, pts, msg = placer_mot(plateau, bonus, infos['main'], mot, lig, col, direction, dico)
         
         if ok:
             infos['score'] += pts
-            if len(mot) == 7:
+            lettres_posees = taille_main_avant - len(infos['main'])
+
+            if lettres_posees == 7:
                 scrabbles_count[nom] = scrabbles_count.get(nom, 0) + 1
 
             completer_main(infos['main'], pioche)
             etat['passes_consecutifs'] = 0
             messagebox.showinfo("Bravo", f"{mot} posé ! +{pts} pts.")
             
+            # Rafraîchissement de l'affichage
             entree_mot.delete(0, tk.END)
             entree_lig.delete(0, tk.END)
             entree_col.delete(0, tk.END)
@@ -995,10 +1076,12 @@ def lancer_graphique():
 
     def action_indice_mots():
         """Aide 1 : Affiche tous les mots possibles avec la main."""
+
         nom, infos = get_joueur_courant()
         
         liste_mots = mots_jouables(mots_fr, infos['main'])
         
+        # Affichage des mots possibles
         if liste_mots:
             liste_mots.sort(key=len, reverse=True)
             msg = ", ".join(liste_mots[:50])
@@ -1013,10 +1096,14 @@ def lancer_graphique():
     
     def action_indice_placement():
         """Aide 2 : Demande un mot et trouve son meilleur emplacement."""
+
         nom, infos = get_joueur_courant()
         
+        # Demande du mot à placer
         mot = simpledialog.askstring("Meilleur Placement", "Quel mot veux-tu placer ?")
-        if not mot: return
+        if not mot: 
+            return
+        
         mot = mot.upper().strip()
         
         if mot not in mots_fr:
@@ -1026,6 +1113,7 @@ def lancer_graphique():
         meilleur_score = -1
         meilleur_coord = None
         
+        # Recherche du meilleur emplacement
         for i in range(TAILLE_PLATEAU):
             for j in range(TAILLE_PLATEAU):
                 for d in ['H', 'V']:
@@ -1042,6 +1130,7 @@ def lancer_graphique():
                             meilleur_score = pts
                             meilleur_coord = (i, j, d)
 
+        # Affichage du meilleur emplacement
         if meilleur_coord:
             i, j, d = meilleur_coord
             coord = f"{chr(i+65)}{j+1}"
@@ -1052,37 +1141,68 @@ def lancer_graphique():
 
 
     def gerer_fin(raison):
+        """Gère la fin de la partie."""
+
         etat['fin_partie'] = True
         msg = f"FIN DE PARTIE ({raison})\n\n"
-        
+
+        # Calcul des scores finaux
         for nom, p in players.items():
-            malus = sum(dico[l]['val'] for l in p['main'] if l in dico)
+            malus = 0
+            for l in p['main']:
+                if l in dico:
+                    malus += dico[l]['val']
+            
             p['score'] -= malus
             msg += f"{nom}: {p['score']} pts (Malus -{malus})\n"
-            
+        
+        # Determination du gagnant
         gagnant = max(players, key=lambda n: players[n]['score'])
         msg += f"\n GAGNANT : {gagnant} !"
 
+        # Mise à jour des stats
         mettre_a_jour_stats(gagnant)
 
         messagebox.showinfo("Résultats", msg)
-        fenetre.quit()
+        frame_jeu.pack_forget()
+        frame_mode.pack(pady=50)
 
 
     def demarrer_jeu(mode, liste_noms):
+        """Initialise et démarre une nouvelle partie."""
+
+        # Réinitialisation des données
         etat['mode_pc'] = (mode == "PVE")
         scrabbles_count.clear()
+        noms_joueurs.clear()
+        players.clear()
+
+        pioche[:] = init_pioche(dico)
+
+        nouveau_plateau = init_jetons()
+        for i in range(TAILLE_PLATEAU):
+            for j in range(TAILLE_PLATEAU):
+                plateau[i][j] = nouveau_plateau[i][j]
+
+        nouveaux_bonus = init_bonus()
+        for i in range(TAILLE_PLATEAU):
+            for j in range(TAILLE_PLATEAU):
+                bonus[i][j] = nouveaux_bonus[i][j]
         
+        # Distribution des mains
         for nom in liste_noms:
             players[nom] = {'main': piocher(pioche, 7), 'score': 0}
             noms_joueurs.append(nom)
             scrabbles_count[nom] = 0
-            
+        
+        # Ajout de l'ordinateur si nécessaire
         if etat['mode_pc']:
             noms_joueurs.append("Ordinateur")
             players["Ordinateur"] = {'main': piocher(pioche, 7), 'score': 0}
             
         etat['joueur_actuel_idx'] = 0
+
+        # Lancement de la partie
         frame_setup.pack_forget()
         frame_jeu.pack(fill="both", expand=True)
         rafraichir_affichage()
@@ -1090,7 +1210,10 @@ def lancer_graphique():
 
     def action_sauvegarder():
         """Enregistre l'état complet du jeu."""
+
         nom_fichier = "partie_scrabble.dat"
+
+        # Préparation des données
         data = {
             'plateau': plateau,
             'bonus': bonus,
@@ -1101,6 +1224,7 @@ def lancer_graphique():
             'scrabbles_count': scrabbles_count
         }
         
+        # Sauvegarde
         with open(nom_fichier, "wb") as f:
             pickle.dump(data, f)
             
@@ -1109,6 +1233,7 @@ def lancer_graphique():
     
     def action_charger():
         """Charge une partie existante."""
+
         nom_fichier = "partie_scrabble.dat"
         
         # Vérification préventive
@@ -1143,75 +1268,117 @@ def lancer_graphique():
     
     def mettre_a_jour_stats(gagnant):
         """Lit, met à jour et sauvegarde les stats globales."""
+
         fichier_stats = "stats_scrabble.json"
         
-        # 1. Chargement conditionnel
+        # Chargement conditionnel
         if Path(fichier_stats).exists():
             with open(fichier_stats, "r") as f:
                 stats = json.load(f)
+
         else:
             stats = {}
             
-        # 2. Mise à jour
+        # Initialisation des catégories
+        if "PVP" not in stats:
+            stats["PVP"] = {}
+        if "PVE" not in stats:
+            stats["PVE"] = {}
+
+        # Sélection de la catégorie
+        if etat['mode_pc']:
+            categorie = "PVE"
+        else:
+            categorie = "PVP"
+
+        # Mise à jour des joueurs
         for nom, data in players.items():
-            if nom not in stats:
-                stats[nom] = {'parties': 0, 'victoires': 0, 'total_score': 0, 'scrabbles': 0}
+            if nom == "Ordinateur":
+                continue 
             
-            s = stats[nom]
+            if nom not in stats[categorie]:
+                stats[categorie][nom] = {'parties': 0, 'victoires': 0, 'total_score': 0, 'scrabbles': 0}
+            
+            s = stats[categorie][nom]
             s['parties'] += 1
             s['total_score'] += data['score']
-            s['scrabbles'] += scrabbles_count.get(nom, 0)
-
+            
+            nb_scrabbles = scrabbles_count.get(nom, 0)
+            s['scrabbles'] += nb_scrabbles
+            
             if nom == gagnant:
                 s['victoires'] += 1
                 
-        # 3. Sauvegarde
         with open(fichier_stats, "w") as f:
             json.dump(stats, f, indent=4)
 
 
     def voir_statistiques():
         """Affiche une fenêtre avec les stats."""
+
         fichier_stats = "stats_scrabble.json"
-        
+
+        # Lecture et affichage
         if Path(fichier_stats).exists():
             with open(fichier_stats, "r") as f:
                 stats = json.load(f)
             
-            msg = "STATISTIQUES DES JOUEURS :\n\n"
-            for nom, s in stats.items():
-                moyenne = 0
-                if s['parties'] > 0:
-                    moyenne = s['total_score'] // s['parties']
+            msg = ""
+            categories = ["PVP", "PVE"]
+
+            # Affichage par catégorie
+            for cat in categories:
+                if cat == "PVP":
+                    titre = "JOUEUR CONTRE JOUEUR"
+
+                else:
+                    titre = "JOUEUR CONTRE ORDI"
                     
-                msg += f"JOUEUR : {nom}\n"
-                msg += f" - Parties jouées : {s['parties']}\n"
-                msg += f" - Victoires : {s['victoires']}\n"
-                msg += f" - Score Moyen : {moyenne}\n"
-                msg += f" - Scrabbles : {s['scrabbles']}\n"
-                msg += "-"*20 + "\n"
+                msg += f"{titre}\n\n"
+                
+                # Affichage des stats par joueur
+                if cat in stats and stats[cat]:
+                    for nom, s in stats[cat].items():
+                        moyenne = 0
+
+                        if s['parties'] > 0:
+                            moyenne = s['total_score'] // s['parties']
+                            
+                        msg += f"JOUEUR : {nom}\n"
+                        msg += f" - Parties : {s['parties']} | Victoires : {s['victoires']}\n"
+                        msg += f" - Score Moy : {moyenne} | Scrabbles : {s['scrabbles']}\n"
+                        msg += "-"*25 + "\n"
+
+                else:
+                    msg += "(Aucune donnée)\n"
+                
+                msg += "\n\n"
                 
             messagebox.showinfo("Statistiques", msg)
-
+            
         else:
-            messagebox.showinfo("Statistiques", "Aucune statistique enregistrée pour le moment.")
+            messagebox.showinfo("Statistiques", "Aucune statistique enregistrée.")
 
 
     def ecran_noms(mode):
+        """Affiche l'écran de saisie des noms des joueurs."""
+
         frame_mode.pack_forget()
         frame_setup.pack(pady=20)
         
+        # Nettoyage de l'écran
         for w in frame_setup.winfo_children(): 
             w.destroy()
         
         tk.Label(frame_setup, text="Configuration", font=("Arial", 16)).pack(pady=10)
         entries = []
 
-
+        # Validation des noms
         def valider():
             noms = [e.get().strip() or f"J{k+1}" for k, e in enumerate(entries)]
             demarrer_jeu(mode, noms)
 
+        # Configuration selon le mode
         if mode == "PVE":
             tk.Label(frame_setup, text="Votre Nom :").pack()
             e = tk.Entry(frame_setup); e.pack(); entries.append(e)
@@ -1222,10 +1389,12 @@ def lancer_graphique():
             spin = tk.Spinbox(frame_setup, from_=2, to=4, width=5)
             spin.pack()
             
+            # Zone dynamique pour les champs de noms
             f_dyn = tk.Frame(frame_setup)
             f_dyn.pack(pady=10)
             
             def gen_champs():
+                # Génération dynamique des champs de noms
                 for w in f_dyn.winfo_children():
                     w.destroy()
                 entries.clear()
@@ -1244,6 +1413,8 @@ def lancer_graphique():
             btn_go = tk.Button(frame_setup, text="LANCER", state="disabled", bg="green", fg="white", command=valider)
             btn_go.pack(pady=20)
 
+
+    # Création de la fenêtre principale
     fenetre = tk.Tk()
     fenetre.title("Projet Scrabble")
     fenetre.geometry("1100x750")
@@ -1324,7 +1495,8 @@ def lancer_graphique():
     tk.Button(f_droite, text="INDICE 1 : Mots possibles", bg="lightblue", command=action_indice_mots).pack(pady=5)
     tk.Button(f_droite, text="INDICE 2 : Meilleur placement", bg="lightblue", command=action_indice_placement).pack(pady=5)
     tk.Button(f_droite, text="SAUVEGARDER PARTIE", bg="gray", fg="white", command=action_sauvegarder).pack(pady=10)
-    
+    tk.Button(f_droite, text="MENU PRINCIPAL", bg="#555", fg="white", command=action_retour_menu).pack(side="bottom", fill="x", pady=5)
+
     tk.Button(f_droite, text="QUITTER", command=fenetre.quit).pack(side="bottom", pady=10)
 
     fenetre.mainloop()
