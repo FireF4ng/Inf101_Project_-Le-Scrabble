@@ -12,9 +12,11 @@ Nikolai-Kolenbet Nikolai.Kolenbet@etu.univ-grenoble-alpes.fr
 # IMPORTS ######################################################################
 
 from pathlib import Path  # gestion fichiers
+from py_compile import main
 import random
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
+import copy
 
 # CONSTANTES ###################################################################
 
@@ -72,7 +74,10 @@ def init_bonus() :
     # On transforme les demi-lignes du plateau en lignes :
     for ligne in plt_bonus : symetrise_liste(ligne)
     # On transforme le demi-plateau en plateau :
-    symetrise_liste(plt_bonus)
+    haut_du_plateau = plt_bonus[:7]
+    bas_du_plateau = copy.deepcopy(haut_du_plateau)
+    bas_du_plateau.reverse()
+    plt_bonus.extend(bas_du_plateau)
 
     return plt_bonus
 
@@ -319,7 +324,8 @@ def valeur_mot(mot, dico):
     valeur = 0
 
     for lettre in mot:
-        valeur += dico[lettre]['val']
+        if lettre in dico:
+            valeur += dico[lettre]['val']
 
     if len(mot) == 7:
         valeur += 50
@@ -432,56 +438,77 @@ def tester_placement(plateau, i, j, direction, mot):
     """Q30) Teste si le mot peut être placé aux coordonnées (i,j) dans la direction dir."""
 
     if direction == 'H':
+        if j + len(mot) > TAILLE_PLATEAU: 
+            return False, "Le mot dépasse du plateau (Horizontal)."
 
-        if j + len(mot) > TAILLE_PLATEAU:
-
-            return []
-        
     else:
-
-        if i + len(mot) > TAILLE_PLATEAU:
-
-            return []
+        if i + len(mot) > TAILLE_PLATEAU: 
+            return False, "Le mot dépasse du plateau (Vertical)."
     
+    plateau_vide = True
+    for lig in range(TAILLE_PLATEAU):
+        for col in range(TAILLE_PLATEAU):
+            if plateau[lig][col] != "":
+                plateau_vide = False
+
+    touche_case_centrale = False
+    touche_autre_mot = False
     lettres_necessaires = []
 
     for k in range(len(mot)):
-
         if direction == 'H':
-            lig = i
-            col = j + k
+            lig, col = i, j + k
 
         else:
-            lig = i + k
-            col = j
-        
+            lig, col = i + k, j
+
+        if lig == 7 and col == 7:
+            touche_case_centrale = True
+
         lettre_plateau = plateau[lig][col]
 
-        if lettre_plateau == "":
+        if lettre_plateau != "":
+            touche_autre_mot = True
+
+            if lettre_plateau != mot[k]:
+                return False, f"Conflit de lettres : {lettre_plateau} sur le plateau vs {mot[k]}."
+            
+        else:
             lettres_necessaires.append(mot[k])
-            
-        elif lettre_plateau != mot[k]:
-            return []
-            
+            if lig > 0 and plateau[lig-1][col] != "": 
+                touche_autre_mot = True
+            elif lig < 14 and plateau[lig+1][col] != "": 
+                touche_autre_mot = True
+            elif col > 0 and plateau[lig][col-1] != "": 
+                touche_autre_mot = True
+            elif col < 14 and plateau[lig][col+1] != "": 
+                touche_autre_mot = True
 
-    return lettres_necessaires
-
+    if plateau_vide:
+        if not touche_case_centrale:
+            return False, "Le premier mot doit passer par l'étoile centrale (H8)."
+    else:
+        if not touche_autre_mot:
+            return False, "Le mot doit être rattaché à un mot existant."
+        
+    if not lettres_necessaires and not plateau_vide:
+        return False, "Le mot doit apporter au moins une nouvelle lettre."
+        
+    return True, lettres_necessaires
 
 def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
     """Q31) Place un mot sur le plateau si c'est possible.
     Q32) Calcule le score d'un mot placé en (i,j) en tenant compte des bonus."""
 
-    lettres_a_poser = tester_placement(plateau, i, j, direction, mot)
+    ok, res = tester_placement(plateau, i, j, direction, mot)
     
-    if lettres_a_poser == []:
-        return False, 0
-        
+    if not ok:
+        return False, 0, res
+    
+    lettres_a_poser = res
+
     main_temp = list(main)
-    possible = True
-    index_lettre = 0
-
     for lett in lettres_a_poser:
-
         if lett in main_temp:
             main_temp.remove(lett)
 
@@ -489,54 +516,59 @@ def placer_mot(plateau, bonus, main, mot, i, j, direction, dico):
             main_temp.remove(JOKER)
 
         else:
-            return False, 0
+            return False, 0, f"Il vous manque la lettre : {lett}"
             
+    # Application
     for lett in lettres_a_poser:
-
-        if lett in main:
+        if lett in main: 
             main.remove(lett)
 
-        else:
+        else: 
             main.remove(JOKER)
 
     score = 0
     multiplicateur_mot = 1
-    nb_nouvelles_lettres = 0
+    nb_nouvelles = 0
 
     for k in range(len(mot)):
-
-        if direction == 'H':
+        if direction == 'H': 
             lig, col = i, j + k
 
-        else:
+        else: 
             lig, col = i + k, j
         
         lettre = mot[k]
-        ancienne_lettre = plateau[lig][col]
-        
+        ancienne = plateau[lig][col]
         plateau[lig][col] = lettre
         
-        val_lettre = dico.get(lettre, {'val':0})['val']
+        val = dico.get(lettre, {'val':0})['val']
         
-        if ancienne_lettre == "":
-            nb_nouvelles_lettres += 1
+        if ancienne == "":
+            nb_nouvelles += 1
             b = bonus[lig][col]
-            
-            if b == 'LD': val_lettre *= 2
-            elif b == 'LT': val_lettre *= 3
-            elif b == 'MD': multiplicateur_mot *= 2
-            elif b == 'MT': multiplicateur_mot *= 3
-            
+
+            if b == 'LD': 
+                val *= 2
+
+            elif b == 'LT': 
+                val *= 3
+
+            elif b == 'MD': 
+                multiplicateur_mot *= 2
+
+            elif b == 'MT': 
+                multiplicateur_mot *= 3
+
             bonus[lig][col] = ""
             
-        score += val_lettre
+        score += val
 
     score *= multiplicateur_mot
-    
-    if nb_nouvelles_lettres == 7:
+
+    if nb_nouvelles == 7: 
         score += 50
         
-    return True, score
+    return True, score, "OK"
 
 
 # PARTIE 7 : Programme Principal Final ###################################################
@@ -756,40 +788,57 @@ def lancer_graphique():
     def trouver_meilleur_coup(main_joueur):
         """Cherche un mot jouable avec la main qui rentre sur le plateau."""
         candidats = meilleurs_mots(mots_fr, main_joueur, dico)
+
+        meilleur_coup = None
+        meilleur_score = -1
         
-        for mot in candidats[:50]:
+        for mot in candidats[:30]:
             for i in range(TAILLE_PLATEAU):
                 for j in range(TAILLE_PLATEAU):
                     for d in ['H', 'V']:
-                        if tester_placement(plateau, i, j, d, mot):
-                            return mot, i, j, d
+                        ok, _ = tester_placement(plateau, i, j, d, mot)
                         
-        return None
+                        if ok:
+                            plateau_temp = copy.deepcopy(plateau)
+                            bonus_temp = copy.deepcopy(bonus)
+                            main_temp = list(main_joueur)
 
+                            succes, pts, _ = placer_mot(plateau_temp, bonus_temp, main_temp, mot, i, j, d, dico)
+                            
+                            if succes and pts > meilleur_score:
+                                meilleur_score = pts
+                                meilleur_coup = (mot, i, j, d)
+
+        return meilleur_coup
+                        
     
     def tour_ordi():
         """Logique du tour de l'ordinateur."""
         nom, infos = "Ordinateur", players["Ordinateur"]
-        
         coup = trouver_meilleur_coup(infos['main'])
         
         if coup:
             mot, i, j, d = coup
-            ok, pts = placer_mot(plateau, bonus, infos['main'], mot, i, j, d, dico)
+            ok, pts, msg = placer_mot(plateau, bonus, infos['main'], mot, i, j, d, dico)
 
             if ok:
                 infos['score'] += pts
                 completer_main(infos['main'], pioche)
                 etat['passes_consecutifs'] = 0
+
+                rafraichir_affichage()
                 messagebox.showinfo("Ordinateur", f"L'ordi a joué {mot} pour {pts} points !")
+                changer_joueur()
 
             else:
+                print(f"Erreur Ordi: {msg}")
                 action_passer()
-        else:
 
+        else:
             if len(pioche) >= 7:
                 echanger(infos['main'], infos['main'], pioche)
                 messagebox.showinfo("Ordinateur", "L'ordi échange ses lettres.")
+                changer_joueur()
 
             else:
                 action_passer()
@@ -822,7 +871,7 @@ def lancer_graphique():
         
         nom, infos = get_joueur_courant()
         lbl_tour.config(text=f"C'est à {nom} de jouer", fg="blue")
-        lbl_main.config(text=f"Main :  {' '.join(infos['main'])}")
+        lbl_main.config(text=f"Main {nom} :  {' '.join(infos['main'])}")
         lbl_pioche.config(text=f"Pioche : {len(pioche)}")
         
         txt_scores = "   ".join([f"{n}: {d['score']}" for n, d in players.items()])
@@ -878,7 +927,7 @@ def lancer_graphique():
         if possible:
             nouvelle_main, _ = echanger(lettres, infos['main'], pioche)
             infos['main'] = nouvelle_main
-            entree_echange.delete(0, tk.END) # Vider champ
+            entree_echange.delete(0, tk.END)
             messagebox.showinfo("Succès", "Lettres échangées.")
             etat['passes_consecutifs'] = 0
             changer_joueur()
@@ -916,7 +965,7 @@ def lancer_graphique():
         if not (0 <= lig < 15 and 0 <= col < 15): 
             return
 
-        ok, pts = placer_mot(plateau, bonus, infos['main'], mot, lig, col, direction, dico)
+        ok, pts, msg = placer_mot(plateau, bonus, infos['main'], mot, lig, col, direction, dico)
         
         if ok:
             infos['score'] += pts
@@ -936,21 +985,65 @@ def lancer_graphique():
                 changer_joueur()
 
         else:
-            messagebox.showerror("Erreur", "Placement impossible.")
+            messagebox.showerror("Erreur Placement ", msg)
 
 
-    def action_indice():
-        """Aide : Propose le meilleur coup possible."""
+    def action_indice_mots():
+        """Aide 1 : Affiche tous les mots possibles avec la main."""
         nom, infos = get_joueur_courant()
-        coup = trouver_meilleur_coup(infos['main'])
         
-        if coup:
-            mot, i, j, d = coup
-            coord = f"{chr(i+65)}{j+1}"
-            messagebox.showinfo("Indice", f"Meilleur coup trouvé : {mot} en {coord} ({d})")
+        liste_mots = mots_jouables(mots_fr, infos['main'])
+        
+        if liste_mots:
+            liste_mots.sort(key=len, reverse=True)
+            msg = ", ".join(liste_mots[:50])
+
+            if len(liste_mots) > 50: 
+                msg += "..."
+            messagebox.showinfo("Mots Possibles", f"Voici des mots faisables avec ta main :\n\n{msg}")
 
         else:
-            messagebox.showinfo("Indice", "Aucun coup évident trouvé (essayez d'échanger).")
+            messagebox.showinfo("Mots Possibles", "Aucun mot trouvable avec ces lettres.")
+
+    
+    def action_indice_placement():
+        """Aide 2 : Demande un mot et trouve son meilleur emplacement."""
+        nom, infos = get_joueur_courant()
+        
+        mot = simpledialog.askstring("Meilleur Placement", "Quel mot veux-tu placer ?")
+        if not mot: return
+        mot = mot.upper().strip()
+        
+        if mot not in mots_fr:
+            messagebox.showwarning("Attention", "Ce mot n'est pas dans le dictionnaire !")
+            return
+
+        meilleur_score = -1
+        meilleur_coord = None
+        
+        for i in range(TAILLE_PLATEAU):
+            for j in range(TAILLE_PLATEAU):
+                for d in ['H', 'V']:
+                    ok, _ = tester_placement(plateau, i, j, d, mot)
+
+                    if ok:
+                        p_temp = copy.deepcopy(plateau)
+                        b_temp = copy.deepcopy(bonus)
+                        m_temp = list(infos['main'])
+                        
+                        succes, pts, _ = placer_mot(p_temp, b_temp, m_temp, mot, i, j, d, dico)
+                        
+                        if succes and pts > meilleur_score:
+                            meilleur_score = pts
+                            meilleur_coord = (i, j, d)
+
+        if meilleur_coord:
+            i, j, d = meilleur_coord
+            coord = f"{chr(i+65)}{j+1}"
+            messagebox.showinfo("Résultat", f"Le meilleur endroit pour '{mot}' est :\n\nCase : {coord}\nDirection : {d}\nScore : {meilleur_score} points")
+
+        else:
+            messagebox.showerror("Impossible", f"Tu ne peux pas placer '{mot}' (manque de place ou lettres manquantes).")
 
 
     def gerer_fin(raison):
@@ -1053,13 +1146,16 @@ def lancer_graphique():
         tk.Label(f_gauche, text=str(j+1), width=4, bg="#333", fg="white").grid(row=0, column=j+1)
     
     grille_labels = []
+
     for i in range(TAILLE_PLATEAU):
         tk.Label(f_gauche, text=chr(65+i), width=2, bg="#333", fg="white").grid(row=i+1, column=0)
         ligne = []
+
         for j in range(TAILLE_PLATEAU):
             l = tk.Label(f_gauche, width=4, height=2, relief="sunken", bd=1)
             l.grid(row=i+1, column=j+1, padx=1, pady=1)
             ligne.append(l)
+
         grille_labels.append(ligne)
 
     f_droite = tk.Frame(frame_jeu, padx=20)
@@ -1100,7 +1196,8 @@ def lancer_graphique():
     tk.Button(f_ech, text="ECHANGER", bg="orange", command=action_echanger).pack(fill="x", pady=2)
     tk.Button(f_ech, text="PASSER TOUR", bg="#f44336", fg="white", command=action_passer).pack(fill="x", pady=5)
 
-    tk.Button(f_droite, text="INDICE (Meilleur coup)", bg="lightblue", command=action_indice).pack(pady=10)
+    tk.Button(f_droite, text="INDICE 1 : Mots possibles", bg="lightblue", command=action_indice_mots).pack(pady=5)
+    tk.Button(f_droite, text="INDICE 2 : Meilleur placement", bg="lightblue", command=action_indice_placement).pack(pady=5)
     tk.Button(f_droite, text="QUITTER", command=fenetre.quit).pack(side="bottom", pady=10)
 
     fenetre.mainloop()
