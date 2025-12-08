@@ -17,7 +17,7 @@ import tkinter as tk # interface graphique
 from tkinter import messagebox, simpledialog # boîtes de dialogue
 import copy # copies profondes
 import json   # pour les stats
-import pickle
+import pickle # pour la sauvegarde
 
 from matplotlib.pyplot import flag # pour la sauvegarde
 
@@ -510,10 +510,13 @@ def tester_placement(plateau, i, j, direction, mot):
             lettres_necessaires.append(mot[k])
             if lig > 0 and plateau[lig-1][col] != "": 
                 touche_autre_mot = True
+
             elif lig < 14 and plateau[lig+1][col] != "": 
                 touche_autre_mot = True
+
             elif col > 0 and plateau[lig][col-1] != "": 
                 touche_autre_mot = True
+                
             elif col < 14 and plateau[lig][col+1] != "": 
                 touche_autre_mot = True
 
